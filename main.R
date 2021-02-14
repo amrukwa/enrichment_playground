@@ -10,7 +10,6 @@ load("data_lung_cancer.RData")
 
 head(data, n=2L)
 head(metaInfo, n=2L)
-
 # Get the p-values for variances and adjust for multiple testing
 vpvals <- apply(data, 1, do_ftest, labels=metaInfo)
 data$vpvals <- p.adjust(vpvals, method= "BH")
@@ -23,13 +22,17 @@ hist(corrected_diff)
 
 # get the de genes - labels
 de_labels <- which(corrected_diff < 0.05)
+de_genes <- rownames(data)[de_labels]
+
 
 # FOR UNIQUE GENE SETS
-result <- ora(data, de_labels, KEGGhsa)
+result <- ora(data, de_genes, KEGGhsa)
 result
+length(which(result < 0.05))
 
 # TMOD
 bg <- rownames(data) # all genes
-fg <- as.character(de_labels) # foreground
+fg <- as.character(de_genes) # foreground
 result_tmod <- tmodHGtest(fg, bg, mset = KEGGhsa)
 result_tmod
+
