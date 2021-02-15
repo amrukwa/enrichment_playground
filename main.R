@@ -10,6 +10,7 @@ load("data_lung_cancer.RData")
 
 head(data, n=2L)
 head(metaInfo, n=2L)
+
 # Get the p-values for variances and adjust for multiple testing
 vpvals <- apply(data, 1, do_ftest, labels=metaInfo)
 data$vpvals <- p.adjust(vpvals, method= "BH")
@@ -21,8 +22,8 @@ corrected_diff <- p.adjust(diff, method= "BH")
 hist(corrected_diff)
 
 # get the de genes - labels
-de_labels <- which(corrected_diff < 0.05)
-de_genes <- rownames(data)[de_labels]
+de_labels <- which(corrected_diff < 0.05) # rows
+de_genes <- rownames(data)[de_labels] # actual labels
 
 
 # FOR UNIQUE GENE SETS
