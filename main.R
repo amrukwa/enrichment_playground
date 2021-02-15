@@ -1,6 +1,6 @@
 # Load source files
-source("expression_testing.R")
-source("ora.R")
+source("source/expression_testing.R")
+source("source/ora.R")
 
 # Load the data
 
