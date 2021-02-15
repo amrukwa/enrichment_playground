@@ -49,5 +49,14 @@ test_that("distribution_row", {
 })
 
 test_that("distribution_dataset", {
-  
+  X <- c(59, 54, 74, 35, 71, 46, 50, 31, 24, 42, 22, 37, 38, 52, 47, 48, 49, 64, 36, 67)
+  x_labels <- rep("c", length(X))
+  Y <- c(63, 43, 37, 57, 53, 40, 14, 69, 36, 44, 47, 42, 60, 33, 56, 25, 65, 41)
+  y_labels <- rep("d", length(Y))
+  labels <- data.frame(c(x_labels, y_labels))
+  colnames(labels) <- c("Group")
+  dataset <- data.frame(matrix(c(X, Y, X, Y), nrow=2))
+  are_normal <- check_all_distr(dataset, labels)
+  expect_true(are_normal[1])
+  expect_true(are_normal[2])
 })

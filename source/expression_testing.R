@@ -7,9 +7,22 @@ check_distributions <- function(row, labels){
   c(c_dist_pval, d_dist_pval)
 }
 
+# check if both distributions are normal
+check_dist_pvals <- function(row){
+  if (row[1] > 0.05 && row[2] > 0.05){
+    TRUE
+  } else {
+    FALSE
+  }
+}
+
+# check all pairs of distributions
 check_all_distr <- function(dataset, labels){
-  # pval correction
-  # as_numeric will have to be converted to df with cols c and d and checked
+  pvals <- apply(dataset, 1, check_distributions, labels)
+  corrected_pvals <- p.adjust(pvals)
+  by_genes <- matrix(corrected_pvals, ncol=2, byrow = TRUE)
+  are_normal <- apply(by_genes, 1, check_dist_pvals)
+  are_normal
 }
 
 # variance test for single row
@@ -20,27 +33,38 @@ do_ftest <- function(row, labels){
   var_pval
 }
 
-# wilcoxon
+# wilcoxon test for single row
+do_wilcoxon <- function(row, labels){
+  control_row = row[labels$Group=="c"]
+  disease_row = row[labels$Group=="d"]
+  mean_pval <- wilcox.test(control_row, disease_row)$p.value
+  mean_pval
+}
 
-do_ttest <- function(row, labels){
-  gene_vals = head(row, -1) # will be -3 after Shapiro-Wilk
+# t-test for single row
+do_ttest <- function(row, labels, colname="vpvals"){
+  gene_vals = head(row, -1)
   control_row =gene_vals[labels$Group=="c"]
   disease_row = gene_vals[labels$Group=="d"]
   var_are_equal = TRUE
-  if (row["vpvals"] < 0.05) {
+  if (row[colname] < 0.05) {
     var_are_equal = FALSE
   }
   mean_pval <- t.test(control_row, disease_row, var.equal=var_are_equal)$p.value
   mean_pval
 }
 
-# compare means with if both bigger then for_normal -> ftest, ttest else wilcoxon
-
+# test means of the whole dataset
 means_tests <- function(dataset, labels){
-  # check all distrs, correct pval
-  # think about correct way of storing wilcoxon and ttest -> correct asserting pvals to dataframe later on
-  # then for all normal: variances pvals, correct them, calculate means pvals
-  # for all non-normal: wilcoxon pvals
-  # correction for multiple testing 
-  # return both corrected and not corrected -> histograms
+  dataset$pval <- 0
+  dataset$are_normal <- check_all_distr(dataset, labels)
+
+  dataset[which(dataset$are_normal == 1), ]$pval <- apply(dataset[which(dataset$are_normal == 1), -(1:2)], 1, do_ftest, labels) # get rid of pval and are_normal
+  dataset[which(dataset$are_normal == 1), ]$pval <- p.adjust(dataset[which(dataset$are_normal == 1), ]$pval)
+  dataset[which(dataset$are_normal == 1), ]$pval <- apply(dataset[which(dataset$are_normal == 1), -1], 1, do_ttest, labels, colname="pval") # get rid of are_normal
+  
+  dataset[which(dataset$are_normal == 0), ]$pval <- apply(dataset[which(dataset$are_normal == 0), -(1:2)], 1, do_wilcoxon, labels) # get rid of pval and are_normal
+  dataset$corrected_pval <- p.adjust(dataset$pval)
+  
+  dataset[, c("pval", "corrected_pval")]
 }
