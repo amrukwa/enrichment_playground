@@ -19,10 +19,10 @@ data$vpvals <- p.adjust(vpvals, method= "BH")
 diff <- apply(data, 1, do_ttest, labels=metaInfo)
 hist(diff)
 corrected_diff <- p.adjust(diff, method= "BH")
-hist(corrected_diff)
+hist(corrected_diff) # really high number of p-values under 0.05 threshold
 
 # get the de genes - labels
-de_labels <- which(corrected_diff < 0.05) # rows
+de_labels <- which(corrected_diff < 0.05) # rows, this array is unusually long - over 15k position out of 20k
 de_genes <- rownames(data)[de_labels] # actual labels
 
 
