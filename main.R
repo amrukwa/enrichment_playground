@@ -26,5 +26,8 @@ result_tmod
 df <- means_tests(data, metaInfo)
 hist(df$pval)
 hist(df$corrected_pval)
+de_genes <- rownames(df[df$corrected_pval < 0.05,])# labels cause i did it on the data and its original indices
 
-de_genes <- which(df$corrected_pval < 0.05) # labels cause i did it on the data and original indices
+ora_result <- ora(data, de_genes, KEGGhsa)
+ora_result[ora_result$corrected_pvals < 0.05,]
+tmodHGtest(fg, bg, mset = KEGGhsa, order.by ="none", qval=1.1)
