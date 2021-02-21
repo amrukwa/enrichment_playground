@@ -1,0 +1,147 @@
+---
+title: "Enrichment analysis"
+author: "Anna Mrukwa"
+date: "February 16, 2021"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+```{r load files, include=FALSE}
+library(plotly)
+source("source/ora.R")
+source("source/cerno.R")
+source("source/expression_testing.R")
+load("data_lung_cancer.RData")
+```
+
+## Gene expression
+
+I start the work with the data by finding the differentially expressed genes. 
+
+To do so, I perform the tests for comparison of the means of control and disease groups, starting with simple two sample for t-test. For each gene I also check the variances equality before comparing the groups' means.
+
+## P-values from t-test: before and after correction
+
+```{r initial_pvals, fig.show="hold", out.height=400}
+data$vpvals <- apply(data, 1, do_ftest, metaInfo)
+pvals <- apply(data, 1, do_ttest, metaInfo)
+lim <- length(pvals[pvals <= 0.05])
+fig1 <- plot_ly(x = pvals, type = "histogram", nbinsx = 20) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(range=c(0,lim), title = "Occurences"), 
+         xaxis = list(range=c(0,1), title = "p-value from t-test"))
+
+corrected_pvals <- p.adjust(pvals)
+fig2 <- plot_ly(x = corrected_pvals, type = "histogram", nbinsx = 20) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(range=c(0,lim), title = "Occurences"), 
+         xaxis = list(range=c(0,1), title = "corrected p-value"))
+fig <- subplot(fig1, fig2, shareY = TRUE, titleX = TRUE)
+fig
+```
+
+## Gene expression - corrected test scheme
+
+The number of differentiated genes proved to be really high, therefore I check whether the assumption on the normality of the distribution does not hinder the results by applying new test scheme:
+
+- Check the normality of distribution of both groups.
+- If it is normal, perform t-test, checking the equality of variances beforehand.
+- If it is not a normal distribution, perform Mann-Whitney test.
+- Correct obtained p-values with Benjamini & Hochberg method for multiple testing.
+
+## P-values after distribution consideration
+```{r expression, fig.show="hold", out.height=400}
+load("data_lung_cancer.RData")
+df <- means_tests(data, metaInfo)
+
+lim <- nrow(df[df["pval"] <= 0.05])
+fig1 <- plot_ly(x = df$pval, type = "histogram", nbinsx = 20) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(range=c(0,lim), title = "Occurences"), 
+         xaxis = list(range=c(0,1), title = "p-value from correct test"))
+
+fig2 <- plot_ly(x = df$corrected_pval, type = "histogram", nbinsx = 20) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(range=c(0,lim), title = "Occurences"), 
+         xaxis = list(range=c(0,1), title = "corrected p-value"))
+fig <- subplot(fig1, fig2, shareY = TRUE, titleX = TRUE)
+fig
+
+de_genes <- rownames(df[df$corrected_pval < 0.05,])
+```
+
+## Distribution effect
+
+I compare the result of taking the distribution into consideration with the previous assumption.
+
+```{r distribution, fig.show="hold", out.height=400}
+lim <- nrow(df[df["pval"] >= 0.95])
+fig1 <- plot_ly(x = corrected_pvals, type = "histogram", nbinsx = 20) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(range=c(0,lim), title = "Occurences"), 
+         xaxis = list(range=c(0,1), title = "corrected t-test"))
+
+fig2 <- plot_ly(x = df$corrected_pval, type = "histogram", nbinsx = 20) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(range=c(0,lim), title = "Occurences"), 
+         xaxis = list(range=c(0,1), title = "corrected right test"))
+fig <- subplot(fig1, fig2, shareY = TRUE, titleX = TRUE)
+fig
+
+```
+
+## Enrichment analysis
+
+After getting gene differentiation, I proceed with enrichment analysis. I will start with ORA, then proceed into FCS methods.
+
+## ORA
+```{r ORA_result}
+ora_result <- ora(data, de_genes, KEGGhsa)
+significant_ora <- ora_result[ora_result$corrected_pvals < 0.05,]
+rora <- significant_ora[order(significant_ora$corrected_pvals), c("Title", "corrected_pvals")]
+head(rora, n=15L)
+```
+
+
+## CERNO
+```{r CERNO_result}
+ordered_genes <- rownames(df[with(df, order(corrected_pval)), ])
+cerno_result <- cerno(ordered_genes, KEGGhsa)
+significant_cerno <- cerno_result[cerno_result$corrected_pvals < 0.05,]
+rcerno <- significant_cerno[order(significant_cerno$corrected_pvals), c("Title", "corrected_pvals")]
+head(rcerno, n=15L)
+```
+
+## Z-transform
+```{r z_transform}
+z_result <- cerno(ordered_genes, KEGGhsa, combining_method = "z-transform")
+significant_z <- z_result[z_result$corrected_pvals < 0.05,]
+rz <- significant_z[order(significant_z$corrected_pvals), c("Title", "corrected_pvals")]
+head(rz, n=15L)
+```
+
+
+## Results comparison
+
+I can see that the Z-transform p-values start much smaller than for other tests. I also check the number of enriched gene sets for each method. I examine how many gene sets occur in all three methods' results.
+```{r comparison}
+compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z_transform=nrow(significant_z))
+rownames(compared) <- c("enriched gene sets")
+compared
+
+```
+
+## Joint gene sets
+
+```{r}
+joint_names <-significant_z[significant_z$Title %in% significant_cerno$Title[significant_cerno$Title %in% significant_ora$Title], "Title"]
+joint <- data.frame(Title=joint_names, 
+                    ora= significant_ora[significant_ora$Title %in% joint_names, "corrected_pvals"],
+                    cerno= significant_cerno[significant_cerno$Title %in% joint_names, "corrected_pvals"],
+                    z= significant_z[significant_z$Title %in% joint_names, "corrected_pvals"])
+cat("Number of joint enriched gene sets: ", length(joint_names))
+print(head(joint[order(joint$z, joint$cerno),], 10L), digits = 1, row.names = FALSE)
+```
+
