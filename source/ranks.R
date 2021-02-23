@@ -1,23 +1,15 @@
-s2n <- function(row, labels){
-  control_row = row[labels$Group=="c"]
-  disease_row = row[labels$Group=="d"]
-  ratio <- (mean(disease_row)-mean(control_row))/(sd(control_row)+sd(disease_row))
-  ratio
-}
-
-
-lfc <- function(row, labels){
-  control_row = row[labels$Group=="c"]
-  disease_row = row[labels$Group=="d"]
-  ratio <- log(mean(disease_row)/mean(control_row))
-  ratio
-}
+library(matrixStats)
 
 rank_genes <- function(data, labels, rank='s2n'){
+  control_means <- rowMeans(data[, labels$Group=="c"])
+  disease_means <- rowMeans(data[, labels$Group=="d"])
   if (rank == 's2n'){
-    ranks <- apply(data, 1, s2n, labels)
+    d_mat <- as.matrix(data)
+    control_sds <- rowSds(d_mat[, labels$Group=="c"])
+    disease_sds <- rowSds(d_mat[, labels$Group=="d"])
+    ranks <- (disease_means - control_means)/(control_sds+disease_sds)
   }else if(rank=='lfc'){
-    ranks <- apply(data, 1, lfc, labels)
+    ranks <- log(disease_means/control_means)
   }
   ranks
 }
