@@ -2,16 +2,6 @@ source("source/ranks.R")
 library(foreach)
 library(doParallel)
 
-ES_i <- function(hit, norm_rank, miss_increment, prev_es){
-  if(hit){
-    es <- prev_es + norm_rank
-  }else{
-    es <- prev_es - miss_increment
-  }
-  es
-}
-
-
 get_ES <- function(data, geneset, labels, miss_increment, rank = "s2n", absolute=TRUE){
   data$ranks <- rank_genes(data, labels, rank)
   if (absolute){
@@ -20,10 +10,11 @@ get_ES <- function(data, geneset, labels, miss_increment, rank = "s2n", absolute
   data = data[order(-data$ranks), ]
   is_hit <- row.names(data)  %in% geneset$GENES$ID
   N_R <- sum(data[is_hit, "ranks"])
-  es <- ES_i(is_hit[1], (data[1, "ranks"]/N_R), miss_increment, 0)
+  data[is_hit, "ranks"] <- data[is_hit, "ranks"]/N_R
+  es <- if(is_hit[1]) data[1, "ranks"] else (-miss_increment)
   ES <- es
   for (i in 2:nrow(data)){
-    es <- ES_i(is_hit[i], (data[i, "ranks"]/N_R), miss_increment, es)
+    es <- if(is_hit[1]) (es+data[1, "ranks"]) else (es-miss_increment)
     if(abs(es) > abs(ES)){
       ES <- es
     }

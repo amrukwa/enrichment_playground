@@ -2,7 +2,9 @@
 source("source/expression_testing.R")
 source("source/ora.R")
 source("source/cerno.R")
-library(dplyr)
+
+library(foreach)
+library(doParallel)
 
 # Load the data
 
@@ -16,9 +18,22 @@ load("data_lung_cancer.RData")
 
 # GSEA
 source("source/gsea.R")
-pval <- gsea(data, KEGGhsa[1], metaInfo)
-pval
 
+cores=detectCores()
+cl <- makeCluster(cores[1]-1)
+clusterExport(cl, c("get_ES", "rank_genes", "ES_i"))
+registerDoParallel(cl)
+
+pval <- gsea(data, KEGGhsa[1], metaInfo)
+
+# pvals <- vector(mode="numeric", length=length(KEGGhsa))
+# for (i in 1:length(KEGGhsa)){
+#   pvals[i] <- gsea(data, KEGGhsa[i], metaInfo)
+# }
+
+stopCluster(cl)
+
+pvals
 
 
 # full functions - differential expression
