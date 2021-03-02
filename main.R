@@ -3,6 +3,7 @@ source("source/expression_testing.R")
 source("source/ora.R")
 source("source/cerno.R")
 
+library(tmod)
 library(foreach)
 library(doParallel)
 
@@ -21,7 +22,7 @@ source("source/gsea.R")
 
 cores=detectCores()
 cl <- makeCluster(cores[1]-1)
-clusterExport(cl, c("get_ES", "rank_genes", "ES_i"))
+clusterExport(cl, c("get_ES", "rank_genes"))
 registerDoParallel(cl)
 
 pval <- gsea(data, KEGGhsa[1], metaInfo)
@@ -33,7 +34,7 @@ pval <- gsea(data, KEGGhsa[1], metaInfo)
 
 stopCluster(cl)
 
-pvals
+#pvals
 
 
 # full functions - differential expression
