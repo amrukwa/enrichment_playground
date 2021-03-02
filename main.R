@@ -4,8 +4,6 @@ source("source/ora.R")
 source("source/cerno.R")
 
 library(tmod)
-library(foreach)
-library(doParallel)
 
 # Load the data
 
@@ -16,26 +14,16 @@ load("data_lung_cancer.RData")
 # head(data, n=2L)
 # head(metaInfo, n=2L)
 
+gs <- tmod2DataFrame(
+  KEGGhsa)
+
+gs[1, "feature_id"]
 
 # GSEA
 source("source/gsea.R")
 
-cores=detectCores()
-cl <- makeCluster(cores[1]-1)
-clusterExport(cl, c("get_ES", "rank_genes"))
-registerDoParallel(cl)
-
 pval <- gsea(data, KEGGhsa[1], metaInfo)
-
-# pvals <- vector(mode="numeric", length=length(KEGGhsa))
-# for (i in 1:length(KEGGhsa)){
-#   pvals[i] <- gsea(data, KEGGhsa[i], metaInfo)
-# }
-
-stopCluster(cl)
-
-#pvals
-
+pval
 
 # full functions - differential expression
 #df <- means_tests(data, metaInfo)

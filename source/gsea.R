@@ -9,8 +9,9 @@ get_ES <- function(data, geneset, labels, miss_increment, rank = "s2n", absolute
   }
   data = data[order(-data$ranks), ]
   is_hit <- row.names(data)  %in% geneset$GENES$ID
-  N_R <- sum(abs(data[is_hit, "ranks"]))
-  data[is_hit, "ranks"] <- abs(data[is_hit, "ranks"])/N_R
+  data$ranks <- abs(data$ranks)
+  N_R <- sum(data[is_hit, "ranks"])
+  data[is_hit, "ranks"] <- data[is_hit, "ranks"]/N_R
   es <- if(is_hit[1]) data[1, "ranks"] else (-miss_increment)
   ES <- es
   for (i in 2:nrow(data)){
@@ -23,7 +24,7 @@ get_ES <- function(data, geneset, labels, miss_increment, rank = "s2n", absolute
 }
 
 
-gsea <- function(data, geneset, labels, rank = "s2n", absolute=TRUE, n_perm=1000){
+single_gsea <- function(data, geneset, labels, rank = "s2n", absolute=TRUE, n_perm=1000){
   N <- nrow(data)
   N_H <- length(geneset$GENES$ID)
   miss_increment <- 1/(N-N_H)
@@ -40,4 +41,18 @@ gsea <- function(data, geneset, labels, rank = "s2n", absolute=TRUE, n_perm=1000
     better_one
   }
   p_val <- better/n_perm
+}
+
+gsea <- function(data, genesets, labels, rank="s2n", absolute=TRUE, n_perm=1000){
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1)
+  clusterExport(cl, c("get_ES", "rank_genes"))
+  registerDoParallel(cl)
+  pvals <- vector(mode="numeric", length=length(genesets))
+  for (i in 1:length(genesets)){
+    pvals[i] <- single_gsea(data, genesets[i], labels, rank, absolute, n_perm)
+  }
+  stopCluster(cl)
+  pvals_adjusted = p.adjust(pvals, method="BH")
+  data.frame(ID=genesets$MODULES$ID, Title=genesets$MODULES$Title, pval=pvals, corrected_pval=pvals_adjusted)
 }
