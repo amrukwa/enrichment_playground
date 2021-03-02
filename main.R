@@ -17,7 +17,9 @@ load("data_lung_cancer.RData")
 gs <- tmod2DataFrame(
   KEGGhsa)
 
-gs[1, "feature_id"]
+colnames(gs)
+# Title, module, feature
+genesets <- gs[, c("module_id", "Title", "feature_id")]
 
 # GSEA
 source("source/gsea.R")
