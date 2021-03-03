@@ -30,29 +30,38 @@ single_gsea <- function(data, geneset, labels, rank = "s2n", absolute=TRUE, n_pe
   miss_increment <- 1/(N-N_H)
   
   ES <- get_ES(data, geneset, labels, miss_increment, rank, absolute)
-  better <- foreach (i=1:n_perm, .combine='+', .export= c("get_ES", "rank_genes"), .packages=c("matrixStats")) %dopar% {
-    shuffled_labels <- transform( labels, Group = sample(Group) )
-    es <- get_ES(data, geneset, shuffled_labels, miss_increment, rank, absolute)
-    better_one <- 0
-    if (es > ES){
-      # the stuff taking the sign into account, now only for absolute bigger
-      better_one <- 1
-    }
-    better_one
-  }
+  if (ES > 0){
+    better <- foreach (i=1:n_perm, .combine='+', .export= c("get_ES", "rank_genes"), .packages=c("matrixStats")) %dopar% {
+      shuffled_labels <- transform( labels, Group = sample(Group) )
+      es <- get_ES(data, geneset, shuffled_labels, miss_increment, rank, absolute)
+      better_one <- 0
+      if (es > ES){
+        better_one <- 1}
+      better_one
+    }}else{
+      better <- foreach (i=1:n_perm, .combine='+', .export= c("get_ES", "rank_genes"), .packages=c("matrixStats")) %dopar% {
+        shuffled_labels <- transform( labels, Group = sample(Group) )
+        es <- get_ES(data, geneset, shuffled_labels, miss_increment, rank, absolute)
+        better_one <- 0
+        if (es < ES){
+          better_one <- 1}
+        better_one}}
   p_val <- better/n_perm
+  data.frame(ES=ES, p_val = p_val)
 }
 
 gsea <- function(data, genesets, labels, rank="s2n", absolute=TRUE, n_perm=1000){
+  results <- data.frame()
   cores=detectCores()
   cl <- makeCluster(cores[1]-1)
   clusterExport(cl, c("get_ES", "rank_genes"))
   registerDoParallel(cl)
-  pvals <- vector(mode="numeric", length=length(genesets))
   for (i in 1:length(genesets)){
-    pvals[i] <- single_gsea(data, genesets[i], labels, rank, absolute, n_perm)
+    result <- single_gsea(data, genesets[i, ], labels, rank, absolute, n_perm)
+    results <- rbind(results, result)
   }
   stopCluster(cl)
-  pvals_adjusted = p.adjust(pvals, method="BH")
-  data.frame(ID=genesets$MODULES$ID, Title=genesets$MODULES$Title, pval=pvals, corrected_pval=pvals_adjusted)
+  pvals_adjusted = p.adjust(results$p_val, method="BH")
+  x = data.frame(ID=genesets$MODULES$ID, Title=genesets$MODULES$Title, corrected_pval=pvals_adjusted)
+  results = cbind(results, x)
 }

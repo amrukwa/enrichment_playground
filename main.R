@@ -1,32 +1,38 @@
 # Load source files
-source("source/expression_testing.R")
-source("source/ora.R")
-source("source/cerno.R")
-
-library(tmod)
+# source("source/expression_testing.R")
+# source("source/ora.R")
+# source("source/cerno.R")
+# 
+# library(tmod)
 
 # Load the data
 
-load("data_lung_cancer.RData")
+# load("data_lung_cancer.RData")
 
 # Look at the data
 
 # head(data, n=2L)
 # head(metaInfo, n=2L)
 
-gs <- tmod2DataFrame(
-  KEGGhsa)
-
-colnames(gs)
+# gs <- tmod2DataFrame(
+#   KEGGhsa)
+# 
+# colnames(gs)
 # Title, module, feature
-genesets <- gs[, c("module_id", "Title", "feature_id")]
+# genesets <- gs[, c("module_id", "Title", "feature_id")]
 
 # GSEA
-source("source/gsea.R")
+load(".RData")
+colnames(genesets) = c("ID", "Title", "features")
 
-pval <- gsea(data, KEGGhsa[1], metaInfo)
+source("source/gsea_polyaxon.R")
+pval <- gsea(data, genesets, metaInfo)
 pval
 
+
+res_lfc[res_lfc$corrected_pval < 0.05,]
+res_lfc[res_lfc$pval < 0.05,]
+res_s2n[res_s2n$pval < 0.05,]
 # full functions - differential expression
 #df <- means_tests(data, metaInfo)
 # hist(df$pval)
