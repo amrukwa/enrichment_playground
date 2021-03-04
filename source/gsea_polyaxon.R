@@ -36,6 +36,12 @@ gsea <- function(data, genesets, labels, rank = "s2n", absolute=TRUE, n_perm=100
   genesets$miss_increment <- get_miss_increments(genesets, nrow(data))
   results <- data.frame(ID=genesets$ID, Title=genesets$Title) 
   results$ES <- single_gsea(data, genesets, labels, rank, absolute)
+  
+  cores=detectCores()
+  cl <- makeCluster(cores[1])
+  clusterExport(cl, c("get_ES", "rank_genes", "single_gsea", "get_miss_increments", "get_miss_inc"))
+  registerDoParallel(cl)
+  
   pvals <- foreach(i=1:n_perm, .combine='+') %do% { 
     shuffled_labels <- transform( labels, Group = sample(Group) )
     es <- single_gsea(data, genesets, shuffled_labels, rank, absolute)
@@ -49,6 +55,9 @@ gsea <- function(data, genesets, labels, rank = "s2n", absolute=TRUE, n_perm=100
     }
     better
   }
+
+  stopCluster(cl)
+  
   results$pval <- pvals/n_perm
   results$corrected_pval <- p.adjust(results$pval, method="BH")
   results

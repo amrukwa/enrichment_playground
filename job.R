@@ -1,6 +1,7 @@
 load(".RData")
 colnames(genesets) = c("ID", "Title", "features")
 source("source/gsea_polyaxon.R")
-ES <- gsea(data, genesets, metaInfo, rank = 's2n')
-ES
-
+s2n_abs <- gsea(data, genesets, metaInfo, rank = 's2n')
+# s2n <- gsea(data, genesets, metaInfo, rank = 's2n', absolute=FALSE)
+# lfc_abs <- gsea(data, genesets, metaInfo, rank = 'lfc')
+# lfc <- gsea(data, genesets, metaInfo, rank = 'lfc', absolute=FALSE)

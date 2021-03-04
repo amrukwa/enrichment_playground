@@ -9,18 +9,14 @@ get_ES <- function(data, geneset, labels, miss_increment, rank = "s2n", absolute
   }
   data = data[order(-data$ranks), ]
   is_hit <- row.names(data)  %in% geneset$GENES$ID
-  data$ranks <- abs(data$ranks)
-  N_R <- sum(data[is_hit, "ranks"])
-  data[is_hit, "ranks"] <- data[is_hit, "ranks"]/N_R
-  es <- if(is_hit[1]) data[1, "ranks"] else (-miss_increment)
-  ES <- es
-  for (i in 2:nrow(data)){
-    es <- if(is_hit[i]) (es+data[i, "ranks"]) else (es-miss_increment)
-    if(abs(es) > abs(ES)){
-      ES <- es
-    }
-  }
-  ES
+  N_R <- sum(abs(data[is_hit, "ranks"]))
+  P_hit <- rep(0, each=nrow(data))
+  P_hit[is_hit] <- (abs(data[is_hit, "ranks"])/N_R)
+  
+  P_miss <- rep(miss_increment, each=nrow(data))
+  P_miss[is_hit] <- 0
+  ES <- cumsum(P_hit - P_miss)
+  ES[which.max(abs(ES))]
 }
 
 
