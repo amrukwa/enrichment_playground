@@ -2,7 +2,7 @@ library(foreach)
 library(doParallel)
 source("source/gsea_polyaxon.R")
 
-load(".RData")
+load("polyaxon.RData")
 colnames(genesets) = c("ID", "Title", "features")
 
 cores=detectCores()

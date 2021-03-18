@@ -1,6 +1,6 @@
 library(R.matlab)
 
-# importing geneset to matlab
+# exporting geneset to matlab
 for (i in 1:length(KEGGhsa)){
   x = append(KEGGhsa[i]$MODULES$ID, KEGGhsa[i]$MODULES$Title)
   x = append(x, KEGGhsa[i]$GENES$ID)
