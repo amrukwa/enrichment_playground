@@ -9,6 +9,15 @@ library(tmod)
 
 load("data_lung_cancer.RData")
 
+# TMOD PLAGE
+plage_result_tmod <- tmodPLAGEtest(mset=KEGGhsa, x=data, group=metaInfo$Group, l=rownames(data), order.by="none")
+plage_result_tmod
+
+# My implementation of PLAGE
+
+source("source/plage.R")
+plage_result <- plage(data, KEGGhsa, metaInfo)
+
 # full functions - differential expression
 df <- means_tests(data, metaInfo)
 hist(df$pval)
