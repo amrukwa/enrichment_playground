@@ -142,10 +142,10 @@ lfc_abs_mrgsea <- data.frame(ID=lfc_abs_matlab[1:336], ES= as.numeric(lfc_abs_ma
 ## Signal to noise absolute - p-values
 We can see the matlab output is definitely strange.
 ```{r s2n_abs, warning = FALSE}
+s2n_abs$corrected_pvals <- p.adjust(s2n_abs$pval, method= "BH")
 s2n_abs_comp <- merge(x= s2n_abs[,c("ID", "pval")], y=s2n_abs_mrgsea[,c("ID", "pval")], by="ID",
                       all=FALSE)
 colnames(s2n_abs_comp) = c("ID", "R", "matlab")
-
 fig <- plot_ly(s2n_abs_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
 fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
 fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "p-value", 
@@ -173,6 +173,7 @@ fig
 
 ## Signal to noise - p-values
 ```{r s2n, warning=FALSE}
+s2n$corrected_pvals <- p.adjust(s2n$pval, method= "BH")
 s2n_matlab_pos <- unlist(results_mrgsea$s2n.pos)
 s2n_mrgsea_pos <- data.frame(ID=s2n_matlab_pos[1:335], ES= as.numeric(s2n_matlab_pos[671:1005]), 
                              pval=as.numeric(s2n_matlab_pos[1006:1340]))
@@ -209,6 +210,7 @@ fig
 
 ## LFC absolute - p-values
 ```{r lfc_abs, echo=FALSE}
+lfc_abs$corrected_pvals <- p.adjust(lfc_abs$pval, method= "BH")
 lfc_abs_comp <- merge(x= lfc_abs[,c("ID", "pval")], y=lfc_abs_mrgsea[,c("ID", "pval")], by="ID",
                       all=FALSE)
 colnames(lfc_abs_comp) = c("ID", "R", "matlab")
@@ -238,6 +240,7 @@ fig
 
 ## LFC - p-values
 ```{r lfc, warning=FALSE}
+lfc$corrected_pvals <- p.adjust(lfc$pval, method= "BH")
 lfc_matlab_pos <- unlist(results_mrgsea$lfc.pos)
 lfc_mrgsea_pos <- data.frame(ID=lfc_matlab_pos[1:332], ES= as.numeric(lfc_matlab_pos[665:996]), 
                              pval=as.numeric(lfc_matlab_pos[997:1328]))
@@ -284,10 +287,11 @@ head(rplage, n=15L)
 ## log P-values correlation
 ```{r pval_comp, include = FALSE}
 library(corrplot)
-pval_comp=cbind(ORA=ora_result[,c("ID", "pval")], CERNO=cerno_result[,"pval"], Z=z_result[,"pval"],
-                S2N=s2n[,"pval"],  S2N_abs=s2n_abs[,"pval"],  
-                LFC=lfc[,"pval"], LFC_abs=lfc_abs[,"pval"],
-                PLAGE=plage_result[, "pval"])
+pval_comp=cbind(ORA=ora_result[,c("ID", "corrected_pvals")], CERNO=cerno_result[,"corrected_pvals"], 
+                Z=z_result[,"corrected_pvals"],
+                S2N=s2n[,"corrected_pvals"],  S2N_abs=s2n_abs[,"corrected_pvals"],  
+                LFC=lfc[,"corrected_pvals"], LFC_abs=lfc_abs[,"corrected_pvals"],
+                PLAGE=plage_result[, "corrected_pvals"])
 
 colnames(pval_comp)[c(1,2)] <- c("ID", "ORA")
 rownames(pval_comp) <- pval_comp[,1]
@@ -315,7 +319,7 @@ corrplot(M, method="circle", type="upper", col=colorRampPalette(c("blue", "white
 
 
 
-## Results comparison
+## Results comparison - add gsea
 
 ```{r comparison}
 compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z_transform=nrow(significant_z), PLAGE=nrow(significant_plage))
@@ -343,6 +347,7 @@ significant_combined <- combined_pvals[combined_pvals$pval_combined < 0.05,]
 significant_combined <- significant_combined[order(significant_combined$pval_combined), c("Title", "pval_combined")]
 head(significant_combined, n=15L)
 ```
+
 ## Visualizations
 ```{r best_pathway, warning=FALSE}
 library(umap)
