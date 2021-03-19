@@ -343,4 +343,29 @@ significant_combined <- combined_pvals[combined_pvals$pval_combined < 0.05,]
 significant_combined <- significant_combined[order(significant_combined$pval_combined), c("Title", "pval_combined")]
 head(significant_combined, n=15L)
 ```
+## Visualizations
+```{r best_pathway, warning=FALSE}
+library(umap)
+rank_pathways <- order(pval_combined)
+best_title <- KEGGhsa[rank_pathways[1]]$MODULES$Title
+genes <- rownames(data) %in% KEGGhsa[rank_pathways[1]]$GENES$ID
+x <- data[genes,]
+x_umap <- umap(t(x))
+x_reduced <- x_umap$layout
+df <- as.data.frame(x_reduced)
+colnames(df) <- c("UMAP1", "UMAP2")
+
+df$SVD <- t(decomposition(data, KEGGhsa[rank_pathways[1]]))
+labels <- gsub("d", "disease", gsub("c", "control", metaInfo$Group))
+df$Group <- labels
+
+fig1 <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, color= ~Group, type = 'scatter', mode = 'markers',
+               colors = "Dark2")
+fig2 <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, type = 'scatter', color= ~SVD, name="SVD",
+                mode = 'markers', showlegend=FALSE)
+fig <- subplot(fig1, fig2)
+fig <- fig %>% layout(title = best_title)
+fig
+```
+
 
