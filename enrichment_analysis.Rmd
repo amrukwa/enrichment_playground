@@ -9,7 +9,7 @@ output: ioslides_presentation
 knitr::opts_chunk$set(echo = FALSE)
 ```
 ```{r load files, include=FALSE}
-library(plotly)
+source("source/visualization.R")
 source("source/ora.R")
 source("source/cerno.R")
 source("source/plage.R")
@@ -352,25 +352,15 @@ head(significant_combined, n=15L)
 ```{r best_pathway, warning=FALSE}
 library(umap)
 rank_pathways <- order(pval_combined)
-best_title <- KEGGhsa[rank_pathways[1]]$MODULES$Title
-genes <- rownames(data) %in% KEGGhsa[rank_pathways[1]]$GENES$ID
-x <- data[genes,]
-x_umap <- umap(t(x))
-x_reduced <- x_umap$layout
-df <- as.data.frame(x_reduced)
-colnames(df) <- c("UMAP1", "UMAP2")
-
-df$SVD <- t(decomposition(data, KEGGhsa[rank_pathways[1]]))
-labels <- gsub("d", "disease", gsub("c", "control", metaInfo$Group))
-df$Group <- labels
-
-fig1 <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, color= ~Group, type = 'scatter', mode = 'markers',
-               colors = "Dark2")
-fig2 <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, type = 'scatter', color= ~SVD, name="SVD",
-                mode = 'markers', showlegend=FALSE)
-fig <- subplot(fig1, fig2)
-fig <- fig %>% layout(title = best_title)
-fig
 ```
 
+```{r, results = "asis", fig.align = 'center', fig.show="hold", warning=FALSE}
+for (i in 1:10){
+  cat("  \n##",  KEGGhsa[rank_pathways[i]]$MODULES$Title, "  \n")
+  fig <- group_comparison(data, metaInfo, KEGGhsa[rank_pathways[i]])
+  print(htmltools::tagList(fig))
+  cat(" \n\n")
+}
+
+```
 
