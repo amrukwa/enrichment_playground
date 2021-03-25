@@ -146,6 +146,9 @@ s2n_abs$corrected_pvals <- p.adjust(s2n_abs$pval, method= "BH")
 s2n_abs_comp <- merge(x= s2n_abs[,c("ID", "pval")], y=s2n_abs_mrgsea[,c("ID", "pval")], by="ID",
                       all=FALSE)
 colnames(s2n_abs_comp) = c("ID", "R", "matlab")
+
+significant_s2n_abs <- s2n_abs[s2n_abs$corrected_pvals < 0.05,]
+
 fig <- plot_ly(s2n_abs_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
 fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
 fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "p-value", 
@@ -186,6 +189,8 @@ s2n_comp <- merge(x= s2n[,c("ID", "pval")], y=s2n_mrgsea[,c("ID", "pval")], by="
                       all=FALSE)
 colnames(s2n_comp) = c("ID", "R", "matlab")
 
+significant_s2n <- s2n[s2n$corrected_pvals < 0.05,]
+
 fig <- plot_ly(s2n_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
 fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
 fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "p-value", 
@@ -214,6 +219,9 @@ lfc_abs$corrected_pvals <- p.adjust(lfc_abs$pval, method= "BH")
 lfc_abs_comp <- merge(x= lfc_abs[,c("ID", "pval")], y=lfc_abs_mrgsea[,c("ID", "pval")], by="ID",
                       all=FALSE)
 colnames(lfc_abs_comp) = c("ID", "R", "matlab")
+
+significant_lfc_abs <- lfc_abs[lfc_abs$corrected_pvals < 0.05,]
+
 
 fig <- plot_ly(lfc_abs_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
 fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
@@ -248,6 +256,8 @@ lfc_matlab_neg <- unlist(results_mrgsea$lfc.neg)
 lfc_mrgsea_neg <- data.frame(ID=lfc_matlab_neg[1:4], ES= as.numeric(lfc_matlab_neg[9:12]), 
                              pval=as.numeric(lfc_matlab_neg[13:16]))
 lfc_mrgsea <- rbind(lfc_mrgsea_pos, lfc_mrgsea_neg)
+
+significant_lfc <- lfc[lfc$corrected_pvals < 0.05,]
 
 lfc_comp <- merge(x= lfc[,c("ID", "pval")], y=lfc_mrgsea[,c("ID", "pval")], by="ID",
                       all=FALSE)
@@ -319,10 +329,12 @@ corrplot(M, method="circle", type="upper", col=colorRampPalette(c("blue", "white
 
 
 
-## Results comparison - add gsea
+## Results comparison
 
 ```{r comparison}
-compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z_transform=nrow(significant_z), PLAGE=nrow(significant_plage))
+compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z_transform=nrow(significant_z), PLAGE=nrow(significant_plage),
+                       LFC = nrow(significant_lfc), LFC_abs = nrow(significant_lfc_abs),
+                       S2N = nrow(significant_s2n), S2N_abs = nrow(significant_s2n_abs))
 rownames(compared) <- c("enriched gene sets")
 compared
 
@@ -330,7 +342,11 @@ compared
 
 ## Joint gene sets
 ```{r}
-joint_names <- Reduce(intersect, list(significant_z$Title, significant_cerno$Title, significant_ora$Title, significant_plage$Title))
+joint_names <- Reduce(intersect, list(significant_z$Title, significant_cerno$Title, 
+                                      significant_ora$Title, significant_plage$Title, 
+                                      significant_lfc$Title, significant_lfc_abs$Title,
+                                      significant_s2n$Title, significant_s2n_abs$Title)
+                      )
 cat("Number of joint enriched gene sets: ", length(joint_names))
 ```
 
