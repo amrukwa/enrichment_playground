@@ -29,17 +29,19 @@ get_m_incs <- function(genesets, genes){
 }
 
 calculate_ES <- function(ranks, is_hit, miss_increment){
+  miss_increment <- miss_increment*(-1)
   N_R <- sum(ranks[is_hit])
   ranks[is_hit] = ranks[is_hit]/N_R
+  ranks[!is_hit] = miss_increment
   es <- ES_max <- ES_min <- 0
   for (i in 1:length(ranks)){
-    es <- if(is_hit[i]) (es+ranks[i]) else (es-miss_increment)
+    es <- es + ranks[i]
     if (es < ES_min){
       ES_min = es
     }else if(es > ES_max){
       ES_max = es}
   }
-  ES <- ES_max - ES_min
+  ES <- ES_max - abs(ES_min)
 }
 
 gsva <- function(dataset, genesets){
@@ -47,7 +49,6 @@ gsva <- function(dataset, genesets){
   cl <- makeCluster(cores[1])
   clusterExport(cl, c("calculate_ES", "get_m_incs", "transform_expression", "get_m_inc"))
   registerDoParallel(cl)
-  
   N <- nrow(dataset)
   genes = row.names(dataset)
   # for each gene in the dataset calculate bandwidth
@@ -55,16 +56,14 @@ gsva <- function(dataset, genesets){
   bandwidths <- rowSds(d_mat)/4
   
   # transform gene expressions
-  transformed <- foreach(i = 1:N, .combine=rbind) %do% {
+  transformed <- foreach(i = 1:N, .combine=rbind) %dopar% {
     transformed_gene <- transform_expression(d_mat[i, ], bandwidths[i])
     transformed_gene
   }
-  
   # normalize the results
   transformed <- abs(transformed - N/2)
   # miss increments for all genesets
   m_inc <- get_m_incs(genesets, genes)
-  
   ES <- foreach(i = 1:ncol(dataset), .combine=cbind) %do% {
     # rank the genes for this patient
     ranks <- transformed[,i]
@@ -73,12 +72,15 @@ gsva <- function(dataset, genesets){
     gene_names <- row.names(dataset)[ranks_order]
     
     # calculate ES for each geneset for this patient
-    foreach(j = 1:length(genesets), .combine=c) %do% {
+    patient_es <- c()
+    for (j in 1:length(genesets)){
       is_hit <- gene_names  %in% genesets[j]$GENES$ID
       es <- calculate_ES(ranks, is_hit, m_inc[j])
-      es
+      patient_es <- c(patient_es, es)
       }
-    }
+    patient_es
+  }
+  print("after")
   stopCluster(cl)
   res <- data.frame(ES)
   colnames(res) <- NULL
