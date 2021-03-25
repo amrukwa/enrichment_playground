@@ -45,8 +45,8 @@ calculate_ES <- function(ranks, is_hit, miss_increment){
 }
 
 gsva <- function(dataset, genesets){
-  cores=detectCores()-1
-  cl <- makeCluster(cores[1])
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1)
   clusterExport(cl, c("calculate_ES", "get_m_incs", "transform_expression", "get_m_inc"))
   registerDoParallel(cl)
   N <- nrow(dataset)
@@ -60,8 +60,6 @@ gsva <- function(dataset, genesets){
     transformed_gene <- transform_expression(d_mat[i, ], bandwidths[i])
     transformed_gene
   }
-  # normalize the results
-  transformed <- abs(transformed - N/2)
   # miss increments for all genesets
   m_inc <- get_m_incs(genesets, genes)
   ES <- foreach(i = 1:ncol(dataset), .combine=cbind) %do% {
@@ -70,7 +68,8 @@ gsva <- function(dataset, genesets){
     ranks_order <- order(ranks, decreasing=TRUE)
     ranks <- ranks[ranks_order]
     gene_names <- row.names(dataset)[ranks_order]
-    
+    # normalize the ordered genes
+    ranks <- abs(seq(from=N, to=1) - N/2)
     # calculate ES for each geneset for this patient
     patient_es <- c()
     for (j in 1:length(genesets)){
@@ -80,7 +79,6 @@ gsva <- function(dataset, genesets){
       }
     patient_es
   }
-  print("after")
   stopCluster(cl)
   res <- data.frame(ES)
   colnames(res) <- NULL
