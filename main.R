@@ -9,26 +9,10 @@ library(tmod)
 
 load("data_lung_cancer.RData")
 
-# GSVA from creators
-
-library(GSVA)
-library(foreach)
-library(doParallel)
-genesets <- tmod2DataFrame(KEGGhsa, rows = "modules", module_col = "module_id",
-  feature_col = "feature_id", sep = ",")
-geneSets <- c()
-gs_n <- 2 # nrow(genesets)
-for (i in 1:gs_n){
-  L <- setNames(unlist(strsplit(genesets[i,"feature_id"], ",")), genesets[i, "module_id"])
-  geneSets <- c(geneSets, setNames(strsplit(genesets[i,"feature_id"], ","), genesets[i, "module_id"]))
-}
-gsva_original <- gsva
-gsva_result_original <- gsva_original(as.matrix(data), geneSets)
-
 # My GSVA
 source("source/gsva.R")
 gsva_implementation <- gsva
-gsva_result_implementation <- gsva_implementation(data, KEGGhsa[1])
+gsva_result_implementation <- gsva_implementation(data, KEGGhsa[1], metaInfo)
 
 # TMOD PLAGE
 plage_result_tmod <- tmodPLAGEtest(mset=KEGGhsa, x=data, group=metaInfo$Group, l=rownames(data), order.by="none")

@@ -1,6 +1,7 @@
 library(matrixStats)
 library(foreach)
 library(doParallel)
+source("source/expression_testing.R")
 
 transform_expression <- function(gene_expression, gene_bw){
   gene_expression <- gene_expression/gene_bw
@@ -44,7 +45,7 @@ calculate_ES <- function(ranks, is_hit, miss_increment){
   ES <- ES_max - abs(ES_min)
 }
 
-gsva <- function(dataset, genesets){
+gsva <- function(dataset, genesets, labels, rownames_title=TRUE){
   cores=detectCores()
   cl <- makeCluster(cores[1]-1)
   clusterExport(cl, c("calculate_ES", "get_m_incs", "transform_expression", "get_m_inc"))
@@ -80,8 +81,17 @@ gsva <- function(dataset, genesets){
     patient_es
   }
   stopCluster(cl)
-  res <- data.frame(ES)
-  colnames(res) <- NULL
-  rownames(res) <- genesets$MODULES$ID
-  res
+  ES <- data.frame(ES)
+  colnames(ES) <- NULL
+  if(rownames_title){
+    rownames(ES) <- genesets$MODULES$Title}else{
+    rownames(ES) <- genesets$MODULES$ID
+    }
+  ES$pval <- apply(ES, 1, do_ftest, labels)
+  ES$pval <- p.adjust(ES$pval, method= "BH")
+  ES$pval <- apply(ES, 1, do_ttest, labels, colname="pval")
+  ES$corrected_pval <- p.adjust(ES$pval)
+  pvals <- ES[, (ncol(ES)-1):ncol(ES)]
+  ES <- ES[1:(length(ES)-2)]
+  list(ES = ES, pvals= pvals)
 }
