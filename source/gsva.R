@@ -90,7 +90,7 @@ gsva <- function(dataset, genesets, labels, rownames_title=TRUE){
   ES$pval <- apply(ES, 1, do_ftest, labels)
   ES$pval <- p.adjust(ES$pval, method= "BH")
   ES$pval <- apply(ES, 1, do_ttest, labels, colname="pval")
-  ES$corrected_pval <- p.adjust(ES$pval)
+  ES$corrected_pvals <- p.adjust(ES$pval)
   pvals <- ES[, (ncol(ES)-1):ncol(ES)]
   ES <- ES[1:(length(ES)-2)]
   list(ES = ES, pvals= pvals)

@@ -13,6 +13,7 @@ source("source/visualization.R")
 source("source/ora.R")
 source("source/cerno.R")
 source("source/plage.R")
+source("source/gsva.R")
 source("source/expression_testing.R")
 load("data_lung_cancer.RData")
 ```
@@ -90,6 +91,7 @@ fig2 <- plot_ly(x = df$corrected_pval, type = "histogram", nbinsx = 20) %>%
          xaxis = list(range=c(0,1), title = "corrected right test"))
 fig <- subplot(fig1, fig2, shareY = TRUE, titleX = TRUE)
 fig
+# for plot_list in plots, for i in length(plotlist) plotlist[[i]]
 
 ```
 
@@ -294,6 +296,17 @@ rplage <- significant_plage[order(significant_plage$corrected_pvals), c("Title",
 head(rplage, n=15L)
 ```
 
+## GSVA
+```{r gsva}
+gsva_results <- gsva(data, KEGGhsa, metaInfo)
+GSVA_ES <- gsva_results$ES
+gsva_result <- gsva_results$pvals
+gsva_result$Title <- rownames(gsva_result)
+rownames(gsva_result) <- NULL
+significant_gsva <- gsva_result[gsva_result$corrected_pvals < 0.05,]
+rgsva <- significant_gsva[order(significant_gsva$corrected_pvals), c("Title","corrected_pvals")]
+head(rgsva, n=15L)
+```
 ## log P-values correlation
 ```{r pval_comp, include = FALSE}
 library(corrplot)
@@ -301,7 +314,7 @@ pval_comp=cbind(ORA=ora_result[,c("ID", "corrected_pvals")], CERNO=cerno_result[
                 Z=z_result[,"corrected_pvals"],
                 S2N=s2n[,"corrected_pvals"],  S2N_abs=s2n_abs[,"corrected_pvals"],  
                 LFC=lfc[,"corrected_pvals"], LFC_abs=lfc_abs[,"corrected_pvals"],
-                PLAGE=plage_result[, "corrected_pvals"])
+                PLAGE=plage_result[, "corrected_pvals"], GSVA=gsva_result[, "corrected_pvals"])
 
 colnames(pval_comp)[c(1,2)] <- c("ID", "ORA")
 rownames(pval_comp) <- pval_comp[,1]
@@ -329,23 +342,24 @@ corrplot(M, method="circle", type="upper", col=colorRampPalette(c("blue", "white
 
 
 
-## Results comparison
 
+## Results comparison
 ```{r comparison}
-compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z_transform=nrow(significant_z), PLAGE=nrow(significant_plage),
+compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z=nrow(significant_z), PLAGE=nrow(significant_plage),
                        LFC = nrow(significant_lfc), LFC_abs = nrow(significant_lfc_abs),
-                       S2N = nrow(significant_s2n), S2N_abs = nrow(significant_s2n_abs))
+                       S2N = nrow(significant_s2n), S2N_abs = nrow(significant_s2n_abs),
+                       GSVA = nrow(significant_gsva))
 rownames(compared) <- c("enriched gene sets")
 compared
-
 ```
+Absolute signal to noise: `r significant_s2n_abs$Title`    
+Signal to noise: `r significant_s2n$Title`
 
-## Joint gene sets
+## Joint gene sets (besides GSEA)
 ```{r}
 joint_names <- Reduce(intersect, list(significant_z$Title, significant_cerno$Title, 
-                                      significant_ora$Title, significant_plage$Title, 
-                                      significant_lfc$Title, significant_lfc_abs$Title,
-                                      significant_s2n$Title, significant_s2n_abs$Title)
+                                      significant_ora$Title, significant_plage$Title,
+                                      significant_gsva$Title)
                       )
 cat("Number of joint enriched gene sets: ", length(joint_names))
 ```
@@ -360,22 +374,27 @@ pval_combined <- pnorm(zcombined)
 combined_pvals <- data.frame(pval_combined)
 combined_pvals$Title <- cerno_result$Title
 significant_combined <- combined_pvals[combined_pvals$pval_combined < 0.05,]
+rownames(significant_combined) <- NULL
 significant_combined <- significant_combined[order(significant_combined$pval_combined), c("Title", "pval_combined")]
 head(significant_combined, n=15L)
 ```
-
 ## Visualizations
 ```{r best_pathway, warning=FALSE}
 library(umap)
 rank_pathways <- order(pval_combined)
+pathways <- KEGGhsa[rank_pathways[1:10]]
 ```
 
-```{r, results = "asis", fig.align = 'center', fig.show="hold", warning=FALSE}
-for (i in 1:10){
-  cat("  \n##",  KEGGhsa[rank_pathways[i]]$MODULES$Title, "  \n")
-  fig <- group_comparison(data, metaInfo, KEGGhsa[rank_pathways[i]])
-  print(htmltools::tagList(fig))
-  cat(" \n\n")
+```{r gradients, results = "asis", fig.align = 'center', fig.show="hold", warning=FALSE}
+subplots <- visualize_pathways(data, metaInfo, pathways, GSVA_ES)
+
+for (i in 1:length(subplots)){
+  for (j in 1:length(subplots[[i]])){
+    cat("  \n##",  pathways[i]$MODULES$Title, "  \n")
+    fig <- subplots[[i]][[j]]
+    print(htmltools::tagList(fig))
+    cat(" \n\n")
+  }
 }
 
 ```
