@@ -389,12 +389,10 @@ pathways <- KEGGhsa[rank_pathways[1:10]]
 subplots <- visualize_pathways(data, metaInfo, pathways, GSVA_ES)
 
 for (i in 1:length(subplots)){
-  for (j in 1:length(subplots[[i]])){
-    cat("  \n##",  pathways[i]$MODULES$Title, "  \n")
-    fig <- subplots[[i]][[j]]
-    print(htmltools::tagList(fig))
-    cat(" \n\n")
-  }
+  cat("  \n##",  pathways[i]$MODULES$Title, "  \n")
+  fig <- subplots[i]
+  print(htmltools::tagList(fig))
+  cat(" \n\n")
 }
 
 ```
