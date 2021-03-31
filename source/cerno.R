@@ -1,4 +1,7 @@
 library(plotly)
+library(foreach)
+library(doParallel)
+library(heatmaply)
 
 # as in tmod the function takes already sorted gene list, my implementation will do the same
 
@@ -11,6 +14,78 @@ rank_patient_genes <- function(gene_expressions, sort_type="abs", gene_names){
     ordered <- gene_names[order(gene_expressions)]
   }
   ordered
+}
+
+single_patient_cerno <- function(ordered_labels, pathway, N, all_ranks){
+  # choose by ids that are in GS
+  in_gs <- ordered_labels %in% pathway$GENES$ID
+  significant_ranks <- all_ranks[in_gs]
+  sum_of_ranks <- sum(significant_ranks)
+  N_gs <- length(significant_ranks)
+  # the values to be combined
+  P <- significant_ranks/N
+  stat_val <- (-2)*sum(log(P))
+  pval <- pchisq(stat_val, 2*N_gs, lower.tail = FALSE)
+  c(stat_val, pval)
+}
+
+patients_pathway_cerno <- function(ordered_labels, pathway, N, all_ranks, patients_n) {
+  results <- foreach (j = 1:patients_n, .combine=rbind) %dopar% {
+    res <- single_patient_cerno(ordered_labels[,j], pathway, N, all_ranks)
+  }
+  results
+}
+
+cerno_heatmaps <- function(dataset, pathways, color_labels=NULL, sort_type="abs", with_dendro=TRUE){
+  cores=detectCores()
+  cl <- makeCluster(cores[1]-1)
+  clusterExport(cl, c("rank_patient_genes", "patients_pathway_cerno", "single_patient_cerno"))
+  registerDoParallel(cl)
+  
+  gene_names <- rownames(dataset)
+  patient_n <- length(dataset)
+  N <- nrow(dataset)
+  all_ranks <- c(1:N)
+  
+  # get ranks for every patient
+  x_normalized <- t(apply(dataset, 1, function(x) pnorm(x, mean=mean(x), sd=sd(x), lower.tail = TRUE)))
+  labels <- apply(x_normalized, 2, rank_patient_genes, sort_type=sort_type, gene_names=gene_names)
+  # for each pathway calculate values
+  pvalues <- matrix(NA, nrow=length(pathways), ncol=patient_n)
+  Fvalues <- matrix(NA, nrow=length(pathways), ncol=patient_n)
+  for (i in 1:length(pathways)){
+    pathway <- pathways[i]
+    title <- pathway$MODULES$Title
+    values <- patients_pathway_cerno(labels, pathway, N, all_ranks, patient_n)
+    pvalues[i,] <- values[,2]
+    Fvalues[i,] <- values[,1]
+  }
+  stopCluster(cl)
+  
+  rownames(pvalues) <- pathways$MODULES$Title
+  colnames(pvalues) <- colnames(dataset)
+  rownames(Fvalues) <- pathways$MODULES$Title
+  colnames(Fvalues) <- colnames(dataset)
+  
+  if(with_dendro){
+    fig <- heatmaply(pvalues, k_row = 2, k_col = 2, col_side_colors = color_labels, 
+                     width=1000, height=625, fontsize_col=8, fontsize_row=8)
+    fig2 <- heatmaply(Fvalues, k_row = 2, k_col = 2, col_side_colors = color_labels, 
+                      width=1000, height=625, fontsize_col=8, fontsize_row=8)
+  }else{
+    fig <- plot_ly(
+      x = colnames(dataset), y=pathways$MODULES$Title,
+      z = pvalues, type = "heatmap"
+    )
+    fig2 <- plot_ly(
+      x = colnames(dataset), y=pathways$MODULES$Title,
+      z = Fvalues, type = "heatmap"
+    )
+  }
+  plots <- vector(mode = "list", length = 2)
+  plots[[1]] <- fig
+  plots[[2]] <- fig2
+  plots
 }
 
 single_cerno <- function(ordered_labels, geneset, combining_method="fisher"){
@@ -36,39 +111,6 @@ single_cerno <- function(ordered_labels, geneset, combining_method="fisher"){
     pval <- pnorm(stat_val)
     return (data.frame(z=stat_val, N_gs = N_gs, AUC=AUC, pval=pval))
   }
-}
-
-cerno_heatmaps <- function(dataset, genesets){
-  gene_names <- rownames(dataset)
-  patient_n <- length(dataset)
-  plots <- list("CERNO_ABS", "CERNO_HTL", "CERNO_LTH")
-  
-  # get ranks for every patient
-  x_normalized <- t(apply(dataset, 1, function(x) pnorm(x, mean=mean(x), sd=sd(x), lower.tail = TRUE)))
-  abs_labels <- apply(x_normalized, 2, rank_patient_genes, sort_type="abs", gene_names=gene_names)
-  htl_labels <- apply(x_normalized, 2, rank_patient_genes, sort_type="htl", gene_names=gene_names)
-  lth_labels <- apply(x_normalized, 2, rank_patient_genes, sort_type="lth", gene_names=gene_names)
-  # for each pathway calculate values
-  for (i in 1:length(pathways)){
-    pathway <- pathways[i]
-    title <- pathway$MODULES$Title
-    genes <- rownames(dataset) %in% pathway$GENES$ID
-    CERNO_abs <- c()
-    CERNO_htl <- c()
-    CERNO_lth <- c()
-    # parallelize it
-    for (j in 1:patient_n){
-      abs_res <- single_cerno(abs_labels[,j], pathway)
-      htl_res <- single_cerno(htl_labels[,j], pathway)
-      lth_res <- single_cerno(lth_labels[,j], pathway)
-      CERNO_abs <- c(CERNO_abs, abs_res[, "F"])
-      CERNO_htl <- c(CERNO_htl, htl_res[, "F"])
-      CERNO_lth <- c(CERNO_lth, lth_res[, "F"])
-      # save pvals as well
-    }
-  }
-  # save the results as 6 matrixes <- pvals and Fs x6
-  # x, y for heatmaps <- pathway names, patient numbers
 }
 
 cerno <- function(ordered_labels, genesets, combining_method="fisher"){

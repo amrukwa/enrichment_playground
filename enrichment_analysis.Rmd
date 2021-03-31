@@ -397,3 +397,35 @@ for (i in 1:length(subplots)){
 
 ```
 
+## CERNO on each patient separately
+```{r cerno_patient, results = "asis", fig.align = 'center', fig.show="hold", warning=FALSE}
+types <- c("abs", "lth", "htl")
+score_type <- c("p-value", "F score")
+
+for (rank_type in types){
+  plots <- cerno_heatmaps(data, KEGGhsa, color_labels=NULL, 
+                          sort_type=rank_type, with_dendro=FALSE)
+  for (i in 1:length(score_type)){
+    cat("  \n##",  rank_type, " - ", score_type[i], "  \n")
+    fig <- plots[[i]]
+    print(htmltools::tagList(fig))
+    cat(" \n\n")
+  }
+}
+```
+
+## CERNO on best pathways
+```{r cerno_pathway, results = "asis", fig.align = 'center', fig.show="hold", warning=FALSE}
+for (rank_type in types){
+  plots <- cerno_heatmaps(data, pathways, color_labels=metaInfo$Group, 
+                          sort_type=rank_type, with_dendro=TRUE)
+  for (i in 1:length(score_type)){
+    cat("  \n##",  rank_type, " - ", score_type[i], "  \n")
+    fig <- plots[[i]]
+    print(htmltools::tagList(fig))
+    cat(" \n\n")
+  }
+}
+```
+
+
