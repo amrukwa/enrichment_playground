@@ -21,7 +21,7 @@ get_m_inc <- function(geneset, genes){
 }
 
 get_m_incs <- function(genesets, genes){
-  N <- length(genesets)
+  N <- length(genesets$MODULES$Title))
   increments <- rep(0, N)
   for (i in 1:N){
     increments[i] <- get_m_inc(genesets[i], genes)
@@ -73,7 +73,7 @@ gsva <- function(dataset, genesets, labels, rownames_title=TRUE){
     ranks <- abs(seq(from=N, to=1) - N/2)
     # calculate ES for each geneset for this patient
     patient_es <- c()
-    for (j in 1:length(genesets)){
+    for (j in 1:length(genesets$MODULES$Title))){
       is_hit <- gene_names  %in% genesets[j]$GENES$ID
       es <- calculate_ES(ranks, is_hit, m_inc[j])
       patient_es <- c(patient_es, es)

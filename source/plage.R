@@ -10,7 +10,7 @@ decomposition <- function(dataset, geneset){
 plage <- function(dataset, genesets, labels){
   pvals <- c()
   stat <- c()
-  for (i in 1:length(genesets)){
+  for (i in 1:length(genesets$MODULES$Title)){
     dec <- decomposition(dataset, genesets[i])
     res <- t.test(dec[labels$Group=="d"], dec[labels$Group=="c"])
     pvals <- append(pvals, res$p.value)
