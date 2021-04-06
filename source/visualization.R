@@ -56,9 +56,17 @@ group_comparison <- function(df, gradients){
   figs <- vector(mode = "list", length = length(gradients))
   for (i in 1:length(gradients)){
     gradient_name <- gradients[[i]]
-    figs[[i]] <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, type = 'scatter', color= as.formula(paste0('~', gradient_name)),
-                         name=gradient_name, text = as.formula(paste0('~', gradient_name)),
-                         mode = 'markers', showlegend=FALSE) %>% layout(annotations = c(annotation_style, text=gradient_name))
+    if(gradient_name=="Group")
+      {
+      figs[[i]] <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, type = 'scatter', color= as.formula(paste0('~', gradient_name)),
+                           name=gradient_name, text = as.formula(paste0('~', gradient_name)),
+                           mode = 'markers', showlegend=TRUE) %>% layout(annotations = c(annotation_style, text=gradient_name))
+    }else
+      {
+      figs[[i]] <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, type = 'scatter', color= as.formula(paste0('~', gradient_name)),
+                           name=gradient_name, text = as.formula(paste0('~', gradient_name)),
+                           mode = 'markers', showlegend=FALSE) %>% layout(annotations = c(annotation_style, text=gradient_name))
+    }
   }
   fig <- subplot(figs, nrows = 2, shareX = TRUE, shareY = TRUE)
   fig <- fig %>% layout(autosize = F, width = 725, height = 500)

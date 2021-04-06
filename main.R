@@ -9,10 +9,75 @@ library(tmod)
 
 load("data_lung_cancer.RData")
 
+heatmap_all_cerno <- cerno_heatmaps(data, KEGGhsa, color_labels=metaInfo$Group, sort_type="abs", with_dendro='none')
+
+# AUCell
+library(AUCell)
+cells_rankings <- AUCell_buildRankings(data.matrix(data))
+geneSets <- list()
+for (i in 1:length(KEGGhsa)){
+  title = KEGGhsa[i]$MODULES$Title
+  genes <- list(KEGGhsa[i]$GENES$ID)
+  geneSets <- c(geneSets, genes)
+}
+names(geneSets) <- KEGGhsa$MODULES$Title
+cells_AUC <- AUCell_calcAUC(geneSets, cells_rankings)
+cells_assignment <- AUCell_exploreThresholds(cells_AUC, plotHist=TRUE, assign=TRUE) 
+
+cellsAssigned <- lapply(cells_assignment, function(x) x$assignment)
+assignmentTable <- reshape2::melt(cellsAssigned, value.name="cell")
+colnames(assignmentTable)[2] <- "geneSet"
+head(assignmentTable)
+
+assignmentMat <- table(assignmentTable[,"geneSet"], assignmentTable[,"cell"])
+assignmentMat[,1:2]
+
+set.seed(123)
+miniAssigMat <- assignmentMat[,sample(1:ncol(assignmentMat),100)]
+library(NMF)
+aheatmap(miniAssigMat, scale="none", color="black", legend=FALSE)
+
+library(umap)
+x_umap <- umap(t(data))
+x_reduced <- x_umap$layout
+df <- as.data.frame(x_reduced)
+colnames(df) <- c("UMAP1", "UMAP2")
+labels = gsub("d", "red", gsub("c", "blue", metaInfo$Group))
+plot(df)
+
+plot(df, col=labels)
+selectedThresholds <- getThresholdSelected(cells_assignment)
+par(mfrow=c(2,3)) # Splits the plot into two rows and three columns
+for(geneSetName in names(selectedThresholds))
+{
+  nBreaks <- 5 # Number of levels in the color palettes
+  # Color palette for the cells that do not pass the threshold
+  colorPal_Neg <- grDevices::colorRampPalette(c("black","blue", "skyblue"))(nBreaks)
+  # Color palette for the cells that pass the threshold
+  colorPal_Pos <- grDevices::colorRampPalette(c("pink", "magenta", "red"))(nBreaks)
+  
+  # Split cells according to their AUC value for the gene set
+  passThreshold <- getAUC(cells_AUC)[geneSetName,] >  selectedThresholds[geneSetName]
+  if(sum(passThreshold) >0 )
+  {
+    aucSplit <- split(getAUC(cells_AUC)[geneSetName,], passThreshold)
+    
+    # Assign cell color
+    cellColor <- c(setNames(colorPal_Neg[cut(aucSplit[[1]], breaks=nBreaks)], names(aucSplit[[1]])), 
+                   setNames(colorPal_Pos[cut(aucSplit[[2]], breaks=nBreaks)], names(aucSplit[[2]])))
+    
+    # Plot
+    plot(df, main=geneSetName,
+         sub="Pink/red cells pass the threshold",
+         col=cellColor[rownames(df)], pch=16) 
+  }
+}
+
 # My GSVA
 source("source/gsva.R")
 gsva_implementation <- gsva
-gsva_result_implementation <- gsva_implementation(data, KEGGhsa[1], metaInfo)
+gsva_result_implementation <- gsva_implementation(data, KEGGhsa[1], metaInfo$Group)
+
 
 # TMOD PLAGE
 plage_result_tmod <- tmodPLAGEtest(mset=KEGGhsa, x=data, group=metaInfo$Group, l=rownames(data), order.by="none")
