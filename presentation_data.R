@@ -151,4 +151,4 @@ heatmap_all_cerno <- cerno_heatmaps(data, KEGGhsa, color_labels=metaInfo$Group, 
 heatmaps_best <- cerno_heatmaps(data, pathways, color_labels=metaInfo$Group, 
                         sort_type="abs", with_dendro=TRUE)
 save(heatmaps_best, subplots, heatmap_all_cerno, file = "data/plots.RData")
-rm(heatmaps_best, heatmap_all_cerno, subplots)
+#rm(heatmaps_best, heatmap_all_cerno, subplots)

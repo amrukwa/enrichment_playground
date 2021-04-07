@@ -1,13 +1,8 @@
-# Load source files
-source("source/expression_testing.R")
-source("source/ora.R")
-source("source/cerno.R")
-
 library(tmod)
 
 # Load the data
 
-load("data_lung_cancer.RData")
+load("data/data_lung_cancer.RData")
 
 
 # AUCell
@@ -34,17 +29,22 @@ assignmentMat[,1:2]
 set.seed(123)
 miniAssigMat <- assignmentMat[,sample(1:ncol(assignmentMat),100)]
 library(NMF)
+pdf("heatmap.pdf")
 aheatmap(miniAssigMat, scale="none", color="black", legend=FALSE)
+dev.off()
 
+set.seed(NULL)
 library(umap)
 x_umap <- umap(t(data))
 x_reduced <- x_umap$layout
 df <- as.data.frame(x_reduced)
 colnames(df) <- c("UMAP1", "UMAP2")
 labels = gsub("d", "red", gsub("c", "blue", metaInfo$Group))
-plot(df)
+plot(df, col=labels, bg=labels, pch=16)
+legend("topright", legend=c("disease", "control"),
+       col=c("red", "blue"), pt.cex = 1, pch=16)
 
-plot(df, col=labels)
+set.seed(123)
 selectedThresholds <- getThresholdSelected(cells_assignment)
 par(mfrow=c(2,3)) # Splits the plot into two rows and three columns
 for(geneSetName in names(selectedThresholds))
@@ -68,6 +68,6 @@ for(geneSetName in names(selectedThresholds))
     # Plot
     plot(df, main=geneSetName,
          sub="Pink/red cells pass the threshold",
-         col=cellColor[rownames(df)], pch=16) 
+         col=cellColor[rownames(df)], pch=16)
   }
 }
