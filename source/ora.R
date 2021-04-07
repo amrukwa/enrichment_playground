@@ -18,7 +18,7 @@ single_ora <- function(dataset, expressed_indices, geneset){
 # FOR WHOLE TMOD OBJECT
 ora <- function(dataset, expressed_indices, genesets){
   results <- data.frame()
-  for (i in 1:length(genesets)){
+  for (i in 1:length(genesets$MODULES$Title)){
     result <- single_ora(dataset, expressed_indices, genesets[i])
     result <- cbind(ID=genesets[i]$MODULES$ID, Title=genesets[i]$MODULES$Title, result)
     results <- rbind(results, result)

@@ -9,9 +9,11 @@ output: ioslides_presentation
 knitr::opts_chunk$set(echo = FALSE)
 ```
 ```{r load files, include=FALSE}
-library(plotly)
+source("source/visualization.R")
 source("source/ora.R")
 source("source/cerno.R")
+source("source/plage.R")
+source("source/gsva.R")
 source("source/expression_testing.R")
 load("data_lung_cancer.RData")
 ```
@@ -89,6 +91,7 @@ fig2 <- plot_ly(x = df$corrected_pval, type = "histogram", nbinsx = 20) %>%
          xaxis = list(range=c(0,1), title = "corrected right test"))
 fig <- subplot(fig1, fig2, shareY = TRUE, titleX = TRUE)
 fig
+# for plot_list in plots, for i in length(plotlist) plotlist[[i]]
 
 ```
 
@@ -123,25 +126,282 @@ head(rz, n=15L)
 ```
 
 
-## Results comparison
+## GSEA implementation
+```{r GSEA_implementation, include=FALSE}
+load("results.RData")
+library(R.matlab)
+results_mrgsea <- readMat('results_gsea.mat')
 
-I can see that the Z-transform p-values start much smaller than for other tests. I also check the number of enriched gene sets for each method. I examine how many gene sets occur in all three methods' results.
+s2n_abs_matlab <- unlist(results_mrgsea$s2n.abs)
+s2n_abs_mrgsea <- data.frame(ID=s2n_abs_matlab[1:336], ES= as.numeric(s2n_abs_matlab[673:1008]), 
+                             pval=as.numeric(s2n_abs_matlab[1009:1344]))
+
+lfc_abs_matlab <- unlist(results_mrgsea$lfc.abs)
+lfc_abs_mrgsea <- data.frame(ID=lfc_abs_matlab[1:336], ES= as.numeric(lfc_abs_matlab[673:1008]), 
+                             pval=as.numeric(lfc_abs_matlab[1009:1344]))
+```
+
+## Signal to noise absolute - p-values
+We can see the matlab output is definitely strange.
+```{r s2n_abs, warning = FALSE}
+s2n_abs$corrected_pvals <- p.adjust(s2n_abs$pval, method= "BH")
+s2n_abs_comp <- merge(x= s2n_abs[,c("ID", "pval")], y=s2n_abs_mrgsea[,c("ID", "pval")], by="ID",
+                      all=FALSE)
+colnames(s2n_abs_comp) = c("ID", "R", "matlab")
+
+significant_s2n_abs <- s2n_abs[s2n_abs$corrected_pvals < 0.05,]
+
+fig <- plot_ly(s2n_abs_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "p-value", 
+                                                                     type = "log"))
+fig
+
+```
+
+## Signal to noise absolute - ES
+```{r s2n_absES, warning = FALSE}
+s2n_abs_comp <- merge(x= s2n_abs[,c("ID", "ES")], y=s2n_abs_mrgsea[,c("ID", "ES")], by="ID",
+                      all=FALSE)
+colnames(s2n_abs_comp) = c("ID", "R", "matlab")
+
+res <- cor.test(s2n_abs_comp$R, s2n_abs_comp$matlab, method="pearson")
+cat("P-value: ", res$p.value)
+cat("Correlation coefficient: ", res$estimate)
+fig <- plot_ly(s2n_abs_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "ES",
+                                                                     type = "log"
+                                                                     ))
+fig
+```
+
+## Signal to noise - p-values
+```{r s2n, warning=FALSE}
+s2n$corrected_pvals <- p.adjust(s2n$pval, method= "BH")
+s2n_matlab_pos <- unlist(results_mrgsea$s2n.pos)
+s2n_mrgsea_pos <- data.frame(ID=s2n_matlab_pos[1:335], ES= as.numeric(s2n_matlab_pos[671:1005]), 
+                             pval=as.numeric(s2n_matlab_pos[1006:1340]))
+s2n_matlab_neg <- unlist(results_mrgsea$s2n.neg)
+s2n_mrgsea_neg <- data.frame(ID=s2n_matlab_neg[1], ES= as.numeric(s2n_matlab_neg[3]), 
+                             pval=as.numeric(s2n_matlab_neg[4]))
+s2n_mrgsea <- rbind(s2n_mrgsea_pos, s2n_mrgsea_neg)
+
+s2n_comp <- merge(x= s2n[,c("ID", "pval")], y=s2n_mrgsea[,c("ID", "pval")], by="ID",
+                      all=FALSE)
+colnames(s2n_comp) = c("ID", "R", "matlab")
+
+significant_s2n <- s2n[s2n$corrected_pvals < 0.05,]
+
+fig <- plot_ly(s2n_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "p-value", 
+                                                                     type = "log"
+                                                                     ))
+fig
+```
+
+## Signal to noise - ES
+```{r s2n_ES, warning=FALSE}
+s2n_comp <- merge(x= s2n[,c("ID", "ES")], y=s2n_mrgsea[,c("ID", "ES")], by="ID",
+                      all=FALSE)
+colnames(s2n_comp) = c("ID", "R", "matlab")
+res <- cor.test(s2n_comp$R, s2n_comp$matlab, method="pearson")
+cat("P-value: ", res$p.value)
+cat("Correlation coefficient: ", res$estimate)
+fig <- plot_ly(s2n_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "ES"))
+fig
+```
+
+## LFC absolute - p-values
+```{r lfc_abs, echo=FALSE}
+lfc_abs$corrected_pvals <- p.adjust(lfc_abs$pval, method= "BH")
+lfc_abs_comp <- merge(x= lfc_abs[,c("ID", "pval")], y=lfc_abs_mrgsea[,c("ID", "pval")], by="ID",
+                      all=FALSE)
+colnames(lfc_abs_comp) = c("ID", "R", "matlab")
+
+significant_lfc_abs <- lfc_abs[lfc_abs$corrected_pvals < 0.05,]
+
+
+fig <- plot_ly(lfc_abs_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "p-value", 
+                                                                     type = "log"))
+fig
+```
+
+## LFC absolute - ES
+```{r lfc_abs_ES, echo=FALSE}
+
+lfc_abs_comp <- merge(x= lfc_abs[,c("ID", "ES")], y=lfc_abs_mrgsea[,c("ID", "ES")], by="ID",
+                      all=FALSE)
+colnames(lfc_abs_comp) = c("ID", "R", "matlab")
+res <- cor.test(lfc_abs_comp$R, lfc_abs_comp$matlab, method="pearson")
+cat("P-value: ", res$p.value)
+cat("Correlation coefficient: ", res$estimate)
+fig <- plot_ly(lfc_abs_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "ES", 
+                                                                     type = "log"))
+fig
+```
+
+## LFC - p-values
+```{r lfc, warning=FALSE}
+lfc$corrected_pvals <- p.adjust(lfc$pval, method= "BH")
+lfc_matlab_pos <- unlist(results_mrgsea$lfc.pos)
+lfc_mrgsea_pos <- data.frame(ID=lfc_matlab_pos[1:332], ES= as.numeric(lfc_matlab_pos[665:996]), 
+                             pval=as.numeric(lfc_matlab_pos[997:1328]))
+lfc_matlab_neg <- unlist(results_mrgsea$lfc.neg)
+lfc_mrgsea_neg <- data.frame(ID=lfc_matlab_neg[1:4], ES= as.numeric(lfc_matlab_neg[9:12]), 
+                             pval=as.numeric(lfc_matlab_neg[13:16]))
+lfc_mrgsea <- rbind(lfc_mrgsea_pos, lfc_mrgsea_neg)
+
+significant_lfc <- lfc[lfc$corrected_pvals < 0.05,]
+
+lfc_comp <- merge(x= lfc[,c("ID", "pval")], y=lfc_mrgsea[,c("ID", "pval")], by="ID",
+                      all=FALSE)
+colnames(lfc_comp) = c("ID", "R", "matlab")
+
+fig <- plot_ly(lfc_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "p-value", 
+                                                                     type = "log"
+                                                                     ))
+fig
+```
+
+## LFC - ES
+```{r lfc_ES, warning=FALSE}
+lfc_comp <- merge(x= lfc[,c("ID", "ES")], y=lfc_mrgsea[,c("ID", "ES")], by="ID",
+                      all=FALSE)
+colnames(lfc_comp) = c("ID", "R", "matlab")
+res <- cor.test(lfc_comp$R, lfc_comp$matlab, method="pearson")
+cat("P-value: ", res$p.value)
+cat("Correlation coefficient: ", res$estimate)
+fig <- plot_ly(lfc_comp, x = ~ID, y = ~R, name = 'R', type = 'scatter', mode = 'markers')
+fig <- fig %>% add_trace(y = ~matlab, name = 'Matlab', mode = 'markers')
+fig <- fig %>% layout(xaxis = list(title = "Gene Set"), yaxis = list(title = "ES"))
+fig
+```
+
+
+## PLAGE
+```{r PLAGE}
+plage_result <- plage(data, KEGGhsa, metaInfo)
+significant_plage <- plage_result[plage_result$corrected_pvals < 0.05,]
+rplage <- significant_plage[order(significant_plage$corrected_pvals), c("Title", "corrected_pvals")]
+head(rplage, n=15L)
+```
+
+## GSVA
+```{r gsva}
+gsva_results <- gsva(data, KEGGhsa, metaInfo)
+GSVA_ES <- gsva_results$ES
+gsva_result <- gsva_results$pvals
+gsva_result$Title <- rownames(gsva_result)
+rownames(gsva_result) <- NULL
+significant_gsva <- gsva_result[gsva_result$corrected_pvals < 0.05,]
+rgsva <- significant_gsva[order(significant_gsva$corrected_pvals), c("Title","corrected_pvals")]
+head(rgsva, n=15L)
+```
+## log P-values correlation
+```{r pval_comp, include = FALSE}
+library(corrplot)
+pval_comp=cbind(ORA=ora_result[,c("ID", "corrected_pvals")], CERNO=cerno_result[,"corrected_pvals"], 
+                Z=z_result[,"corrected_pvals"],
+                S2N=s2n[,"corrected_pvals"],  S2N_abs=s2n_abs[,"corrected_pvals"],  
+                LFC=lfc[,"corrected_pvals"], LFC_abs=lfc_abs[,"corrected_pvals"],
+                PLAGE=plage_result[, "corrected_pvals"], GSVA=gsva_result[, "corrected_pvals"])
+
+colnames(pval_comp)[c(1,2)] <- c("ID", "ORA")
+rownames(pval_comp) <- pval_comp[,1]
+pval_comp[,1] <- NULL
+
+log_pval_comp <- (log(pval_comp))
+M <- cor(log_pval_comp, method="spearman")
+
+n <- ncol(log_pval_comp )
+pcorr <- matrix(0, n, n)
+for (i in 1:(n-1)){
+  for (j in (i+1):n){
+    val <- cor.test(log_pval_comp[, i], log_pval_comp[, j], method="spearman")$p.value
+    pcorr[i,j] <- val
+    pcorr[j,i] <- val
+  }
+}
+colnames(pcorr) <- colnames(log_pval_comp)
+rownames(pcorr) <- colnames(pcorr)
+```
+
+```{r pval_corr, warning = FALSE}
+corrplot(M, method="circle", type="upper", col=colorRampPalette(c("blue", "white", "red"))(200), tl.col="black", p.mat = pcorr, sig.level = 0.05, insig = "blank")
+```
+
+
+
+
+## Results comparison
 ```{r comparison}
-compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z_transform=nrow(significant_z))
+compared <- data.frame(ORA=nrow(significant_ora), CERNO=nrow(significant_cerno), Z=nrow(significant_z), PLAGE=nrow(significant_plage),
+                       LFC = nrow(significant_lfc), LFC_abs = nrow(significant_lfc_abs),
+                       S2N = nrow(significant_s2n), S2N_abs = nrow(significant_s2n_abs),
+                       GSVA = nrow(significant_gsva))
 rownames(compared) <- c("enriched gene sets")
 compared
-
 ```
+Absolute signal to noise: `r significant_s2n_abs$Title`    
+Signal to noise: `r significant_s2n$Title`
 
-## Joint gene sets
-
+## Joint gene sets (besides GSEA)
 ```{r}
-joint_names <-significant_z[significant_z$Title %in% significant_cerno$Title[significant_cerno$Title %in% significant_ora$Title], "Title"]
-joint <- data.frame(Title=joint_names, 
-                    ora= significant_ora[significant_ora$Title %in% joint_names, "corrected_pvals"],
-                    cerno= significant_cerno[significant_cerno$Title %in% joint_names, "corrected_pvals"],
-                    z= significant_z[significant_z$Title %in% joint_names, "corrected_pvals"])
+joint_names <- Reduce(intersect, list(significant_z$Title, significant_cerno$Title, 
+                                      significant_ora$Title, significant_plage$Title,
+                                      significant_gsva$Title)
+                      )
 cat("Number of joint enriched gene sets: ", length(joint_names))
-print(head(joint[order(joint$z, joint$cerno),], 10L), digits = 1, row.names = FALSE)
 ```
+
+
+## Combining p-values
+```{r combined_pvals}
+Z_vals <- apply(pval_comp, 2, function(x) qnorm(x))
+k <- ncol(pval_comp)
+zcombined <- apply(Z_vals, 1, function(x) sum(x)/sqrt(k))
+pval_combined <- pnorm(zcombined)
+combined_pvals <- data.frame(pval_combined)
+combined_pvals$Title <- cerno_result$Title
+significant_combined <- combined_pvals[combined_pvals$pval_combined < 0.05,]
+rownames(significant_combined) <- NULL
+significant_combined <- significant_combined[order(significant_combined$pval_combined), c("Title", "pval_combined")]
+head(significant_combined, n=15L)
+```
+## Visualizations
+```{r best_pathway, warning=FALSE}
+library(umap)
+rank_pathways <- order(pval_combined)
+pathways <- KEGGhsa[rank_pathways[1:10]]
+```
+
+```{r gradients, results = "asis", fig.align = 'center', fig.show="hold", warning=FALSE}
+subplots <- visualize_pathways(data, metaInfo, pathways, GSVA_ES)
+
+for (i in 1:length(subplots)){
+  cat("  \n##",  pathways[i]$MODULES$Title, "  \n")
+  fig <- subplots[i]
+  print(htmltools::tagList(fig))
+  cat(" \n\n")
+}
+
+```
+
+## CERNO on best pathways
+```{r cerno_pathway, results = "asis", fig.align = 'center', fig.show="hold", warning=FALSE}
+plots <- cerno_heatmaps(data, pathways, color_labels=metaInfo$Group, 
+                          sort_type="abs", with_dendro=TRUE)
+print(htmltools::tagList(plots))
+```
+
 
