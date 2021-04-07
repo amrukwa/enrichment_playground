@@ -60,8 +60,6 @@ cerno_heatmaps <- function(dataset, pathways, color_labels=NULL, sort_type="abs"
   stopCluster(cl)
   rownames(pvalues) <- pathways$MODULES$Title
   colnames(pvalues) <- colnames(dataset)
-  pvalues[pvalues==0] <- .Machine$double.xmin
-  pvalues <- log(pvalues)
   ByPal <- colorRampPalette(c('blue', 'red'))
   fig <- heatmaply(pvalues, k_row = 2, k_col = 2, dendrogram = with_dendro,
                    col_side_colors = data.frame("Group" = color_labels, check.names=FALSE),
