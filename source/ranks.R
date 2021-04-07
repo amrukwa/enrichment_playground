@@ -11,7 +11,7 @@ rank_genes <- function(data, labels, rank='s2n'){
     disease_sds <- rowSds(disease)
     ranks <- (disease_means - control_means)/(control_sds+disease_sds)
   }else if(rank=='lfc'){
-    ranks <- log(disease_means/control_means)
+    ranks <- log2(disease_means/control_means)
   }
   ranks
 }
