@@ -59,7 +59,7 @@ group_comparison <- function(df, gradients){
     if(gradient_name=="Group")
       {
       figs[[i]] <- plot_ly(df, x = ~UMAP1, y = ~UMAP2, type = 'scatter', color= as.formula(paste0('~', gradient_name)),
-                           name=gradient_name, text = as.formula(paste0('~', gradient_name)),
+                           name=as.formula(paste0('~', gradient_name)), text = as.formula(paste0('~', gradient_name)),
                            mode = 'markers', showlegend=TRUE) %>% layout(annotations = c(annotation_style, text=gradient_name))
     }else
       {
