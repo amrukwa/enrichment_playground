@@ -2,6 +2,7 @@ library(tmod)
 load("data/data_lung_cancer.RData")
 
 # Differentiating genes search
+source("source/expression_testing.R")
 df <- means_tests(data, metaInfo)
 de_genes <- rownames(df[df$corrected_pval < 0.05,])
 ordered_genes <- rownames(df[with(df, order(corrected_pval)), ])
@@ -123,7 +124,7 @@ nrow(significant_combined)
 # Clearing after first set of methods
 rm(significant_cerno, significant_combined, significant_gsva, significant_lfc, significant_lfc_abs,
    significant_ora, significant_plage, significant_s2n, significant_s2n_abs, significant_z)
-rm(cerno_result, ora_result, z_result, plage_result, gsva_results, gsva_result, 
+rm(cerno_result, ora_result, z_result, plage_result, gsva_results, gsva_result,
    lfc, lfc_abs, s2n, s2n_abs, Z_vals, k, zcombined)
 
 
@@ -142,14 +143,12 @@ for (i in 1:length(subplots)){
   print(fig)
 }
 
-rm(fig, name, pathway_name, subplots)
-
 # single cerno
 source("source/cerno.R")
 heatmap_all_cerno <- cerno_heatmaps(data, KEGGhsa, color_labels=metaInfo$Group, sort_type="abs", 
                                     with_dendro='none')
-save(heatmap_all_cerno, file = "data/plots.RData")
-rm(heatmap_all_cerno)
 
 heatmaps_best <- cerno_heatmaps(data, pathways, color_labels=metaInfo$Group, 
                         sort_type="abs", with_dendro=TRUE)
+save(heatmaps_best, subplots, heatmap_all_cerno, file = "data/plots.RData")
+rm(heatmaps_best, heatmap_all_cerno, subplots)
