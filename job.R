@@ -2,7 +2,7 @@ library(foreach)
 library(doParallel)
 source("source/gsea_polyaxon.R")
 
-load(".RData")
+load("polyaxon.RData")
 colnames(genesets) = c("ID", "Title", "features")
 source("source/gsea_polyaxon.R")
 
@@ -14,9 +14,9 @@ registerDoParallel(cl)
 # make it parallel here - progress bar should work then
 # s2n_abs <- gsea(data, genesets, metaInfo, rank = 's2n')
 # s2n <- gsea(data, genesets, metaInfo, rank = 's2n', absolute=FALSE)
-# lfc_abs <- gsea(data, genesets, metaInfo, rank = 'lfc')
-lfc <- gsea(data, genesets, metaInfo, rank = 'lfc', absolute=FALSE)
+lfc_abs <- gsea(data, genesets, metaInfo, rank = 'lfc')
+# lfc <- gsea(data, genesets, metaInfo, rank = 'lfc', absolute=FALSE)
 
 stopCluster(cl)
 
-save(lfc_abs, lfc, s2n_abs, s2n, file = "results.RData")
+#save(lfc_abs, lfc, s2n_abs, s2n, file = "results.RData")
