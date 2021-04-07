@@ -11,6 +11,8 @@ load("data_lung_cancer.RData")
 
 heatmap_all_cerno <- cerno_heatmaps(data, KEGGhsa, color_labels=metaInfo$Group, sort_type="abs", with_dendro='none')
 
+save(heatmap_all_cerno, file = "plots.RData")
+
 dendro_all_cerno <- cerno_heatmaps(data, KEGGhsa, color_labels=metaInfo$Group, sort_type="abs", with_dendro='both')
 
 # AUCell
