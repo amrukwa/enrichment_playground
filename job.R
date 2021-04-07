@@ -2,7 +2,7 @@ library(foreach)
 library(doParallel)
 source("source/gsea_polyaxon.R")
 
-load("polyaxon.RData")
+load("data/polyaxon.RData")
 colnames(genesets) = c("ID", "Title", "features")
 
 cores=detectCores()
@@ -17,4 +17,4 @@ s2n <- gsea(data, genesets, metaInfo, rank = 's2n', absolute=FALSE)
 
 stopCluster(cl)
 
-#save(lfc_abs, lfc, s2n_abs, s2n, file = "results.RData")
+#save(lfc_abs, lfc, s2n_abs, s2n, file = "data/results.RData")
