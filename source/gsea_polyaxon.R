@@ -43,7 +43,7 @@ gsea <- function(data, gs, labels, rank = "s2n", absolute=TRUE, n_perm=1000){
   gs$miss_increment <- get_miss_increments(gs, genes)
   results <- data.frame(ID=gs$ID, Title=gs$Title) 
   ES <- single_gsea(data, gs, labels, rank, absolute)
-  es <- foreach(i=1:n_perm, .combine=rbind) %dopar% { 
+  es <- foreach(i=1:n_perm, .combine=rbind, .packages = "matrixStats") %dopar% { 
     shuffled_labels <- transform(labels, Group = sample(Group))
     es <- single_gsea(data, gs, shuffled_labels, rank, absolute)
     es
@@ -52,21 +52,26 @@ gsea <- function(data, gs, labels, rank = "s2n", absolute=TRUE, n_perm=1000){
     NES = ES[i]/abs(mean(es[, i]))
     NES
   }
+  
+  NES_is_pos <- NES >= 0
+  
   res = foreach(i=1:length(ES),.combine=rbind)%dopar%{
     if (ES[i] >= 0){
       better <- (es[, i] > ES[i])
       pval <- length(which(es[, i] >= ES[i]))
       NES_pval <- max(sum(es[better, i])/n_perm, 1/n_perm)
-      NES_qval <- min(1, NES_pval/(sum(NES[better]>NES[i])/sum(better)))
+      NES_qval <- min(1, NES_pval/(sum(NES[NES_is_pos]>NES[i])/sum(NES_is_pos)))
       }else{
       better <- (es[, i] < ES[i])
       pval <- length(which(es[, i] <= ES[i]))
       NES_pval <- max(sum(es[better, i])/n_perm, 1/n_perm)
-      NES_qval <- min(1, NES_pval[i]/(sum(NES[better] < NES[i])/sum(better)))
+      NES_qval <- min(1, NES_pval[i]/(sum(NES[!NES_is_pos] < NES[i])/sum(!NES_is_pos)))
       }
     data.frame(pval=pval,NES_pval=NES_pval, NES_qval=NES_qval)
   }
+  results$ES <- ES
   results$NES <- NES
   results <- cbind(results, res)
+  results$pval_corrected <- p.adjust(results$pval, method="BH")
   results
 }
