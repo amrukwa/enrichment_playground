@@ -53,19 +53,19 @@ gsea <- function(data, gs, labels, rank = "s2n", absolute=TRUE, n_perm=1000){
     NES
   }
   
-  NES_is_pos <- NES >= 0
+  NES_is_pos <- (NES >= 0)
   
   res = foreach(i=1:length(ES),.combine=rbind)%dopar%{
     if (ES[i] >= 0){
       better <- (es[, i] > ES[i])
-      pval <- length(which(es[, i] >= ES[i]))
+      pval <- length(which(es[, i] >= ES[i]))/n_perm
       NES_pval <- max(sum(es[better, i])/n_perm, 1/n_perm)
-      NES_qval <- min(1, NES_pval/(sum(NES[NES_is_pos]>NES[i])/sum(NES_is_pos)))
+      NES_qval <- min(1, NES_pval/((sum(NES >= NES[i]))/sum(NES_is_pos)))
       }else{
       better <- (es[, i] < ES[i])
       pval <- length(which(es[, i] <= ES[i]))
       NES_pval <- max(sum(es[better, i])/n_perm, 1/n_perm)
-      NES_qval <- min(1, NES_pval[i]/(sum(NES[!NES_is_pos] < NES[i])/sum(!NES_is_pos)))
+      NES_qval <- min(1, NES_pval/((sum(NES <= NES[i]))/(sum(!NES_is_pos))))
       }
     data.frame(pval=pval,NES_pval=NES_pval, NES_qval=NES_qval)
   }
