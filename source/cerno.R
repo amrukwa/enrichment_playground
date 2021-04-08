@@ -36,7 +36,7 @@ patients_pathway_cerno <- function(ordered_labels, pathway, N, all_ranks, patien
   results
 }
 
-cerno_heatmaps <- function(dataset, pathways, color_labels=NULL, sort_type="abs", with_dendro='both'){
+individual_cerno <- function(dataset, pathways, labels, sort_type="abs"){
   cores=detectCores()
   cl <- makeCluster(cores[1]-1)
   clusterExport(cl, c("rank_patient_genes", "patients_pathway_cerno", "single_patient_cerno"))
@@ -48,8 +48,9 @@ cerno_heatmaps <- function(dataset, pathways, color_labels=NULL, sort_type="abs"
   all_ranks <- c(1:N)
   
   # get ranks for every patient
-  x_normalized <- t(apply(dataset, 1, function(x) pnorm(x, mean=mean(x[color_labels=='c']), sd=sd(x[color_labels=='c']), lower.tail = TRUE)))
+  x_normalized <- t(apply(dataset, 1, function(x) pnorm(x, mean=mean(x[labels=='c']), sd=sd(x[labels=='c']), lower.tail = TRUE)))
   labels <- apply(x_normalized, 2, rank_patient_genes, sort_type=sort_type, gene_names=gene_names)
+  
   # for each pathway calculate values
   pvalues <- matrix(NA, nrow=pathways_number, ncol=patient_n)
   for (i in 1:pathways_number){
@@ -60,13 +61,20 @@ cerno_heatmaps <- function(dataset, pathways, color_labels=NULL, sort_type="abs"
   stopCluster(cl)
   rownames(pvalues) <- pathways$MODULES$Title
   colnames(pvalues) <- colnames(dataset)
+  pvalues
+}
+
+cerno_heatmaps <- function(pvalues, pathways_names, color_labels, with_dendro='both', fontsize=8){
+  # do the slice on pvals
+  pvalues <- pvalues[pathways_names, ]
   ByPal <- colorRampPalette(c('blue', 'red'))
   fig <- heatmaply(pvalues, k_row = 2, k_col = 2, dendrogram = with_dendro,
                    col_side_colors = data.frame("Group" = color_labels, check.names=FALSE),
                    col_side_palette = ByPal,   showticklabels = c(FALSE, TRUE),
-                   width=1000, height=625, fontsize_col=8, fontsize_row=8)
+                   width=1000, height=625, fontsize_col=fontsize, fontsize_row=fontsize)
   fig
 }
+
 
 single_cerno <- function(ordered_labels, geneset, combining_method="fisher"){
   N <- length(ordered_labels) # all analyzed genes

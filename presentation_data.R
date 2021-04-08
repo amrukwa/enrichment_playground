@@ -145,10 +145,23 @@ for (i in 1:length(subplots)){
 
 # single cerno
 source("source/cerno.R")
-heatmap_all_cerno <- cerno_heatmaps(data, KEGGhsa, color_labels=metaInfo$Group, sort_type="abs", 
-                                    with_dendro='none')
+cerno_pvals <- individual_cerno(data, KEGGhsa, labels=metaInfo$Group, sort_type="abs")
 
-heatmaps_best <- cerno_heatmaps(data, pathways, color_labels=metaInfo$Group, 
-                        sort_type="abs", with_dendro=TRUE)
-save(heatmaps_best, subplots, heatmap_all_cerno, file = "data/plots.RData")
+heatmaps_all <- cerno_heatmaps(cerno_pvals, KEGGhsa$MODULES$Title, 
+                                color_labels=metaInfo$Group, with_dendro=FALSE)
+
+cases_number <- length(which(metaInfo$Group=="d"))
+cerno_pathways <- c()
+for (i in 1:nrow(cerno_pvals)){
+  cases_values <- cerno_pvals[i, metaInfo$Group=="d"]
+  significant_cases <- length(which(cases_values < 0.05))
+  if(significant_cases > 0.7*cases_number){
+    cerno_pathways <- c(cerno_pathways, KEGGhsa[i]$MODULES$Title)
+  }
+}
+
+heatmaps_best <- cerno_heatmaps(cerno_pvals, cerno_pathways, 
+                                color_labels=metaInfo$Group, with_dendro=TRUE, fontsize=15)
+
+save(heatmaps_best, subplots, heatmaps_all, file = "data/plots.RData")
 #rm(heatmaps_best, heatmap_all_cerno, subplots)
