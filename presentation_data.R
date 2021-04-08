@@ -161,7 +161,7 @@ for (i in 1:nrow(cerno_pvals)){
 }
 
 heatmaps_best <- cerno_heatmaps(cerno_pvals, cerno_pathways, 
-                                color_labels=metaInfo$Group, with_dendro=TRUE, fontsize=15)
+                                color_labels=metaInfo$Group, with_dendro=TRUE, fontsize=12)
 
 save(heatmaps_best, subplots, heatmaps_all, file = "data/plots.RData")
 #rm(heatmaps_best, heatmap_all_cerno, subplots)
