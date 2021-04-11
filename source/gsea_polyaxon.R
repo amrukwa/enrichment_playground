@@ -49,23 +49,43 @@ gsea <- function(data, gs, labels, rank = "s2n", absolute=TRUE, n_perm=1000){
     es
   }
   NES <- foreach(i=1:length(ES), .combine=c) %dopar% {
-    NES = ES[i]/abs(mean(es[, i]))
+    if (ES[i] >= 0){
+      sign <- which(es[ ,i] > 0)
+    }else{
+      sign <- which(es[ ,i] < 0)
+    }
+    es_ <- es[sign, i]
+    NES = ES[i]/abs(mean(es_))
     NES
   }
   
-  NES_is_pos <- (NES >= 0)
-  
-  res = foreach(i=1:length(ES),.combine=rbind)%dopar%{
+  nes <- foreach(i=1:length(ES), .combine=cbind) %dopar% {
+    nes <- rep(0, n_perm)
     if (ES[i] >= 0){
-      better <- (es[, i] > ES[i])
+      sign <- which(es[ , i] > 0)
+    }else{
+      sign <- which(es[ , i] < 0)
+    }
+    es_ <- es[sign, i]
+    nes[sign] <- es_/abs(mean(es_))
+    nes
+  }
+  ES_is_pos <- (ES >= 0)
+  res = foreach(i=1:length(ES), .combine=rbind)%dopar%{
+    if (ES[i] >= 0){
+      nes_ <- which(nes[ , i] > 0)
+      better <- (nes[, i] > NES[i])
       pval <- length(which(es[, i] >= ES[i]))/n_perm
-      NES_pval <- max(sum(es[better, i])/n_perm, 1/n_perm)
-      NES_qval <- min(1, NES_pval/((sum(NES >= NES[i]))/sum(NES_is_pos)))
+      
+      NES_pval <- max(sum(nes[better, i])/length(nes_), 1/length(nes_))
+      NES_qval <- min(1, NES_pval/((sum(NES >= NES[i]))/sum(ES_is_pos)))
       }else{
-      better <- (es[, i] < ES[i])
-      pval <- length(which(es[, i] <= ES[i]))
-      NES_pval <- max(sum(es[better, i])/n_perm, 1/n_perm)
-      NES_qval <- min(1, NES_pval/((sum(NES <= NES[i]))/(sum(!NES_is_pos))))
+      nes_ <- nes[(nes[ , i] < 0), i]
+      better <- (nes[, i] < NES[i])
+      pval <- length(which(es[, i] <= ES[i]))/n_perm
+      
+      NES_pval <- max(sum(nes[better, i])/length(nes_), 1/length(nes_))
+      NES_qval <- min(1, NES_pval/((sum(NES <= NES[i]))/(sum(!ES_is_pos))))
       }
     data.frame(pval=pval,NES_pval=NES_pval, NES_qval=NES_qval)
   }
