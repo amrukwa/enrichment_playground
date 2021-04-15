@@ -48,43 +48,45 @@ gsea <- function(data, gs, labels, rank = "s2n", absolute=TRUE, n_perm=1000){
     es <- single_gsea(data, gs, shuffled_labels, rank, absolute)
     es
   }
+  ES_is_pos <- (ES >= 0)
+  
   NES <- foreach(i=1:length(ES), .combine=c) %dopar% {
-    if (ES[i] >= 0){
-      sign <- which(es[ ,i] > 0)
+    if (ES_is_pos[i]){
+      es_ <- es[es[, i] > 0, i]
     }else{
-      sign <- which(es[ ,i] < 0)
+      es_ <- es[es[, i] < 0, i]
     }
-    es_ <- es[sign, i]
     NES = ES[i]/abs(mean(es_))
     NES
   }
   
   nes <- foreach(i=1:length(ES), .combine=cbind) %dopar% {
     nes <- rep(0, n_perm)
-    if (ES[i] >= 0){
-      sign <- which(es[ , i] > 0)
+    if (ES_is_pos[i]){
+      sign <- es[, i] > 0
     }else{
-      sign <- which(es[ , i] < 0)
+      sign <- es[, i] < 0
     }
     es_ <- es[sign, i]
     nes[sign] <- es_/abs(mean(es_))
     nes
   }
-  ES_is_pos <- (ES >= 0)
+
+  nes_pos <- nes[nes>0]
+  nes_neg <- nes[nes<0]
+  
   res = foreach(i=1:length(ES), .combine=rbind)%dopar%{
-    if (ES[i] >= 0){
-      nes_ <- which(nes > 0)
-      better <- (nes > NES[i])
-      pval <- length(which(es[, i] >= ES[i]))/length(which(nes[ , i] > 0))
+    if (ES_is_pos[i]){
+      better <- (nes_pos > NES[i])
+      pval <- length(which(es[, i] >= ES[i]))/length(which(es[ , i] > 0))
       
-      NES_pval <- max(sum(better)/length(nes_), 1/length(nes_))
+      NES_pval <- max(sum(better)/length(nes_pos), 1/length(nes_pos))
       NES_qval <- min(1, NES_pval/((sum(NES >= NES[i]))/sum(ES_is_pos)))
       }else{
-      nes_ <- which(nes < 0)
-      better <- (nes < NES[i])
-      pval <- length(which(es[, i] <= ES[i]))/length(which(nes[ , i] < 0))
+      better <- (nes_neg < NES[i])
+      pval <- length(which(es[, i] <= ES[i]))/length(which(es[ , i] < 0))
       
-      NES_pval <- max(sum(better)/length(nes_), 1/length(nes_))
+      NES_pval <- max(sum(better)/length(nes_neg), 1/length(nes_neg))
       NES_qval <- min(1, NES_pval/((sum(NES <= NES[i]))/(sum(!ES_is_pos))))
       }
     data.frame(pval=pval,NES_pval=NES_pval, NES_qval=NES_qval)
